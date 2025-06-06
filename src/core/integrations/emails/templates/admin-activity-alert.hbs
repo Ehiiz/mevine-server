@@ -1,0 +1,37 @@
+<h2
+  style='font-size: 24px; font-weight: bold; color: #333; margin-top: 0;'
+>{{emailSubject}}</h2>
+<p>Hello Admin,</p>
+<p>An important activity has occurred on the platform that requires your
+  attention.</p>
+
+{{#if submission}}
+  <div style='padding: 15px; border: 1px solid #ddd; border-radius: 8px;'>
+    <strong>New Gift Card Submission:</strong>
+    <ul>
+      <li><strong>User:</strong> {{submission.userEmail}}</li>
+      <li><strong>Card Type:</strong> {{submission.cardType}}</li>
+      <li><strong>Amount:</strong> ${{submission.amount}}</li>
+    </ul>
+    <p>Please review this submission in the admin panel.</p>
+  </div>
+{{/if}}
+
+{{#if transaction}}
+  <div style='padding: 15px; border: 1px solid #ddd; border-radius: 8px;'>
+    <strong>New Transaction Occurred:</strong>
+    <ul>
+      <li><strong>Transaction ID:</strong> {{transaction.transactionId}}</li>
+      <li><strong>User:</strong> {{transaction.userEmail}}</li>
+      <li><strong>Amount:</strong> ${{transaction.amount}}</li>
+      <li><strong>Type:</strong> {{transaction.type}}</li>
+    </ul>
+  </div>
+{{/if}}
+
+<br />
+<a
+  href='YOUR_ADMIN_PANEL_URL'
+  target='_blank'
+  style='background-color: #775CFF; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;'
+>Go to Admin Panel</a>

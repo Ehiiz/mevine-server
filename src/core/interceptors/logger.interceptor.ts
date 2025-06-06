@@ -2,12 +2,14 @@ import {
   CallHandler,
   ExecutionContext,
   Injectable,
+  Logger,
   NestInterceptor,
 } from '@nestjs/common';
 import { Observable, tap } from 'rxjs';
 
 @Injectable()
 export class LoggerInterceptor implements NestInterceptor {
+  private readonly logger = new Logger(LoggerInterceptor.name);
   intercept(
     context: ExecutionContext,
     next: CallHandler<any>,
@@ -15,12 +17,12 @@ export class LoggerInterceptor implements NestInterceptor {
     const request = context.switchToHttp().getRequest();
     const method = request.method;
     const url = request.url;
-    console.log(`Accessing the url ${url} via a ${method} METHOD`);
+    this.logger.log(`Accessing the url ${url} via a ${method} METHOD`);
 
     const now = Date.now();
 
     return next
       .handle()
-      .pipe(tap(() => console.log(`After.... ${Date.now() - now}ms`)));
+      .pipe(tap(() => this.logger.log(`After.... ${Date.now() - now}ms`)));
   }
 }

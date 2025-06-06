@@ -1,7 +1,20 @@
-import { ArgumentsHost, ExceptionFilter, HttpException } from '@nestjs/common';
+import {
+  ArgumentsHost,
+  Catch,
+  ExceptionFilter,
+  HttpException,
+  Inject,
+  Logger,
+} from '@nestjs/common';
 import { MongooseError } from 'mongoose';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
+@Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
+  constructor(
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
+  ) {}
+
   catch(exception: any, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse();
@@ -20,6 +33,15 @@ export class HttpExceptionFilter implements ExceptionFilter {
       error = exception.message;
       status = 400;
     }
+
+    // This is the crucial part: log the unhandled exception as 'fatal'
+    this.logger.fatal(`Unhandled Exception: ${exception}`, {
+      stack: exception instanceof Error ? exception.stack : '',
+      path: request.url,
+      method: request.method,
+      ip: request.ip,
+      body: request.body,
+    });
 
     response.status(status).json({
       statuscode: status,

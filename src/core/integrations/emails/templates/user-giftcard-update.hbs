@@ -1,0 +1,27 @@
+<h2
+  style='font-size: 24px; font-weight: bold; color: #333; margin-top: 0;'
+>{{emailSubject}}</h2>
+<p>Hello {{name}},</p>
+
+{{#if cardDetails}}
+  <p>This is to confirm that we have successfully received your gift card
+    submission. Our team is now processing it. Here are the details:</p>
+  <ul
+    style='background-color: #f9f9fb; border-left: 4px solid #775CFF; padding: 15px; list-style-type: none; margin: 20px 0;'
+  >
+    <li><strong>Card Type:</strong> {{cardDetails.type}}</li>
+    <li><strong>Amount:</strong> ${{cardDetails.amount}}</li>
+  </ul>
+{{/if}}
+
+{{#if update}}
+  <p>We have an update regarding your gift card ({{update.cardType}}).</p>
+  <p style='font-size: 18px;'><strong>New Status: {{update.status}}</strong></p>
+  {{#if update.reason}}
+    <p><strong>Reason:</strong> {{update.reason}}</p>
+  {{/if}}
+{{/if}}
+
+<p>We will notify you of any further changes. You can check the status of all
+  your transactions in your dashboard.</p>
+<p>Thanks,<br />The Mevine Team</p>
