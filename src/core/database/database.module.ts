@@ -2,6 +2,16 @@ import { Global, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DatabaseService } from './database.service';
+import { User, UserSchema } from './schemas/user.schema';
+import { Transaction, TransactionSchema } from './schemas/transaction.schema';
+import { Wallet, WalletSchema } from './schemas/wallet.schema';
+import { Admin, AdminSchema } from './schemas/admin.schema';
+import { AdminLog, AdminLogSchema } from './schemas/admin-log.schema';
+import {
+  ReferralRecord,
+  ReferralRecordSchema,
+} from './schemas/referral-record.schema';
+import { Kyc, KycSchema } from './schemas/kyc.schema';
 
 @Global()
 @Module({
@@ -18,6 +28,40 @@ import { DatabaseService } from './database.service';
       },
       inject: [ConfigService],
     }),
+    MongooseModule.forFeature([
+      {
+        name: User.name,
+        schema: UserSchema,
+      },
+      {
+        name: Transaction.name,
+        schema: TransactionSchema,
+      },
+      {
+        name: Wallet.name,
+        schema: WalletSchema,
+      },
+      {
+        name: Transaction.name,
+        schema: TransactionSchema,
+      },
+      {
+        name: Admin.name,
+        schema: AdminSchema,
+      },
+      {
+        name: AdminLog.name,
+        schema: AdminLogSchema,
+      },
+      {
+        name: ReferralRecord.name,
+        schema: ReferralRecordSchema,
+      },
+      {
+        name: Kyc.name,
+        schema: KycSchema,
+      },
+    ]),
   ],
   providers: [DatabaseService],
   exports: [DatabaseService],
