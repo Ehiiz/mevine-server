@@ -1,0 +1,38 @@
+import { Injectable } from '@nestjs/common';
+import { DatabaseService } from 'src/core/database/database.service';
+import { User, UserDocument } from 'src/core/database/schemas/user.schema';
+
+@Injectable()
+export class UserProfileService {
+  constructor(private readonly databaseSerice: DatabaseService) {}
+
+  async updateProfile(body: {
+    firstName?: string;
+    lastName?: string;
+    avatar?: string;
+    user: UserDocument;
+  }): Promise<{ user: User }> {
+    try {
+      const { user: base, ...rest } = body;
+      const user = await this.databaseSerice.users
+        .findByIdAndUpdate(base._id, rest, { new: true })
+        .lean<User>();
+
+      return { user: user! };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async fetchBalance(body: {
+    user: UserDocument;
+  }): Promise<{ balance: number }> {
+    try {
+      const balance = body.user.wallet.balance;
+
+      return { balance };
+    } catch (error) {
+      throw error;
+    }
+  }
+}

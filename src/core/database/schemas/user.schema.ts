@@ -41,6 +41,11 @@ export class User implements UserMethods {
   @Prop({
     type: String,
   })
+  location: string;
+
+  @Prop({
+    type: String,
+  })
   avatar: string;
 
   @Prop({
@@ -48,9 +53,11 @@ export class User implements UserMethods {
       password: String,
       transactionPin: String,
       accountVerificationToken: String,
+      loginVerificationToken: String,
       passwordResetToken: String,
-      verificationTokenExpiration: String,
-      tokenExpiration: String,
+      verificationTokenExpiration: Date,
+      tokenExpiration: Date,
+      loginTokenExpiration: Date,
     },
   })
   auth: IAuth;
@@ -62,6 +69,10 @@ export class User implements UserMethods {
         default: false,
       },
       kycVerified: {
+        type: Boolean,
+        default: false,
+      },
+      completeSetup: {
         type: Boolean,
         default: false,
       },
@@ -113,13 +124,14 @@ export class User implements UserMethods {
   activateUser: () => { walletId: string; code: string };
   createdAt: Date;
   updatedAt: Date;
+  wallet: Wallet;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
 
 UserSchema.virtual('wallet', {
   ref: 'Wallet',
-  foreignField: 'userId',
+  foreignField: 'entity',
   localField: '_id',
   justOne: true,
 });

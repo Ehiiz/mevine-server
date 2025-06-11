@@ -37,6 +37,8 @@ export default tseslint.config(
       '@typescript-eslint/prefer-promise-reject-errors': 'off',
       '@typescript-eslint/no-unused-vars': 'off',
       'no-useless-catch': 'off',
+      '@typescript-eslint/no-redundant-type-constituents': 'off',
+      '@typescript-eslint/no-empty-object-type': 'off',
     },
   },
 );

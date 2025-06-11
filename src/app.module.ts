@@ -14,6 +14,8 @@ import { LoggerModule } from './core/logger/logger.module';
 import { FatalErrorMailTransport } from './core/logger/fatal-error-mail.transport';
 import { format, transports } from 'winston';
 import * as DailyRotateFile from 'winston-daily-rotate-file';
+import { BankModule } from './modules/providers/bank/bank.module';
+import { VFDModule } from './modules/providers/bank/vfd/vfd.module';
 
 @Module({
   imports: [
@@ -30,7 +32,7 @@ import * as DailyRotateFile from 'winston-daily-rotate-file';
           secret: secret,
           global: true,
           signOptions: {
-            expiresIn: configService.get<string>('JWT_EXPIRATION') || '1h',
+            expiresIn: configService.get<string>('JWT_EXPIRATION') || '7d',
           },
         };
       },
@@ -128,6 +130,8 @@ import * as DailyRotateFile from 'winston-daily-rotate-file';
     // FirebaseModule,
     EmailQueueModule,
     FcmModule,
+    VFDModule,
+    BankModule,
   ],
   controllers: [AppController],
   providers: [AppService],
