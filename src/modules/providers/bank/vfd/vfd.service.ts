@@ -91,17 +91,6 @@ export class VFDHttpServiceFactory {
   }
 }
 
-// @Injectable()
-// export class VFDService {
-//   private readonly logger = new Logger(VFDService.name);
-//   constructor(
-//     @Inject(WALLETS_HTTP_SERVICE)
-//     private readonly walletsHttpService: HttpService,
-//     // Inject the HttpService instance configured for Bills Payment API
-//     @Inject(BILLS_HTTP_SERVICE) private readonly billsHttpService: HttpService,
-//   ) {}
-// }
-
 @Injectable()
 export class VFDService {
   private readonly logger = new Logger(VFDService.name);
