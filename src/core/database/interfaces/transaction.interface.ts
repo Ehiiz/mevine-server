@@ -4,6 +4,7 @@ export enum TranscationStatusEnum {
   processing,
   completed,
   cancelled,
+  failed,
 }
 
 export enum ServiceTypeEnum {
