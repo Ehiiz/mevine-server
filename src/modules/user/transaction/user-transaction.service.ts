@@ -1,19 +1,15 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   ServiceTypeEnum,
   TransactionTypeEnum,
 } from 'src/core/database/interfaces/transaction.interface';
 import mongoose from 'mongoose';
 import { Transaction } from 'src/core/database/schemas/transaction.schema';
-import { DatabaseService } from 'src/core/database/database.service';
+import { TransactionService } from 'src/modules/providers/transaction/transaction.service';
 
 @Injectable()
 export class UserTransactionService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(private readonly transactionService: TransactionService) {}
 
   async fetchAllTransactions(body: {
     page: number;
@@ -32,96 +28,9 @@ export class UserTransactionService {
     sum: number;
   }> {
     try {
-      const query: any = {};
-      const skip = (body.page - 1) * body.limit;
+      const data = await this.transactionService.fetchAllTransactions(body);
 
-      if (body.search) {
-        const searchRegex = { $regex: body.search, options: 'i' };
-        query.$or = [
-          { 'meta.paidFrom.entityId': searchRegex },
-          {
-            'meta.paidFrom.entityCode': searchRegex,
-          },
-          {
-            'meta.paidFrom.entityNumber': searchRegex,
-          },
-          {
-            'meta.paidFrom.entityName': searchRegex,
-          },
-          { 'meta.paidTo.entityId': searchRegex },
-          {
-            'meta.paidTo.entityCode': searchRegex,
-          },
-          {
-            'meta.paidTo.entityNumber': searchRegex,
-          },
-          {
-            'meta.paidTo.entityName': searchRegex,
-          },
-        ];
-      }
-
-      if (body.from || body.to) {
-        query.createdAt = {};
-        if (body.from) {
-          const fromDate = new Date(body.from);
-          if (isNaN(fromDate.getTime())) {
-            throw new BadRequestException('Invalid "from" date format.');
-          }
-          query.createdAt.$gte = fromDate;
-        }
-        if (body.to) {
-          const toDate = new Date(body.to);
-          if (isNaN(toDate.getTime())) {
-            throw new BadRequestException('Invalid "to" date format.');
-          }
-
-          toDate.setHours(23, 59, 59, 999);
-          query.createdAt.$lte = toDate;
-        }
-      }
-
-      if (body.service) {
-        query.service = body.service;
-      }
-
-      if (body.type) {
-        query.type = body.type;
-      }
-
-      if (body.id) {
-        query.user = body.id;
-      }
-
-      const [transactions, countResult, sumResult] = await Promise.all([
-        this.databaseService.transactions
-          .find(query)
-          .skip(skip)
-          .limit(body.limit)
-          .exec(),
-        this.databaseService.transactions.countDocuments(query),
-        this.databaseService.transactions
-          .aggregate([
-            { $match: query }, // Filter transactions based on the same query
-            {
-              $group: {
-                _id: null, // Group all matching documents into a single group
-                totalAmount: { $sum: '$amount' }, // Sum the 'amount' field
-              },
-            },
-          ])
-          .exec(),
-      ]);
-
-      const totalSum = sumResult.length > 0 ? sumResult[0].totalAmount : 0; // Extract the sum
-
-      return {
-        currentPage: body.page,
-        totalPages: Math.ceil(countResult / body.limit), // Use Math.ceil for correct total pages
-        transactions,
-        count: countResult,
-        sum: totalSum,
-      };
+      return data;
     } catch (error) {
       throw error;
     }
@@ -131,15 +40,9 @@ export class UserTransactionService {
     id: string;
   }): Promise<{ transaction: Transaction }> {
     try {
-      const transaction = await this.databaseService.transactions.findById(
-        body.id,
-      );
+      const transaction = await this.transactionService.fetchATransaction(body);
 
-      if (!transaction) {
-        throw new NotFoundException('Transaction not found');
-      }
-
-      return { transaction };
+      return transaction;
     } catch (error) {
       throw error;
     }

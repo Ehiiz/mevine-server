@@ -129,6 +129,8 @@ export class UserAuthService {
       body.user.accountStatus.completeSetup = true;
       const token = this.jwtService.sign({ id: body.user.id });
 
+      await body.user.save();
+
       const event = new UserCompleteSetupEvent(
         body.user.email,
         `${body.user.firstName} ${body.user.lastName}`,

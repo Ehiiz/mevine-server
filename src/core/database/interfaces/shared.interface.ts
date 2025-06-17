@@ -14,3 +14,8 @@ export interface IAccountStatus {
   kycVerified: boolean;
   completeSetup: boolean;
 }
+
+export interface ITransferKey {
+  signature: string;
+  reference: string;
+}

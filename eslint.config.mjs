@@ -39,6 +39,7 @@ export default tseslint.config(
       'no-useless-catch': 'off',
       '@typescript-eslint/no-redundant-type-constituents': 'off',
       '@typescript-eslint/no-empty-object-type': 'off',
+      '@typescript-eslint/restrict-template-expressions': 'off',
     },
   },
 );

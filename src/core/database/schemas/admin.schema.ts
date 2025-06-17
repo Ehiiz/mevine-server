@@ -26,6 +26,11 @@ export class Admin {
   lastName: string;
 
   @Prop({
+    type: String,
+  })
+  avatar: string;
+
+  @Prop({
     type: {
       password: String,
       transactionPin: String,

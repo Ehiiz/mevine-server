@@ -7,7 +7,7 @@ import {
   TxInfoEnum,
   ServiceTypeEnum,
   TransactionTypeEnum,
-  TranscationStatusEnum,
+  TransactionStatusEnum,
 } from '../interfaces/transaction.interface';
 
 export type TransactionDocument = Transaction & Document;
@@ -37,10 +37,10 @@ export class Transaction {
 
   @Prop({
     type: String,
-    enum: Object.values(TranscationStatusEnum),
-    default: TranscationStatusEnum.initiated,
+    enum: Object.values(TransactionStatusEnum),
+    default: TransactionStatusEnum.initiated,
   })
-  status: TranscationStatusEnum;
+  status: TransactionStatusEnum;
 
   @Prop({
     type: String,

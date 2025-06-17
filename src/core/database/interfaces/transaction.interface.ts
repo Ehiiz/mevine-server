@@ -1,4 +1,4 @@
-export enum TranscationStatusEnum {
+export enum TransactionStatusEnum {
   initiated,
   pending,
   processing,
@@ -14,6 +14,7 @@ export enum ServiceTypeEnum {
   electricty,
   giftcard,
   transfer,
+  crypto,
 }
 
 export enum TransactionTypeEnum {
@@ -35,6 +36,7 @@ export enum TransactionEntityTypeEnum {
   electricity,
   giftcard,
   crypto,
+  external,
 }
 
 export enum TxInfoEnum {
