@@ -4,7 +4,6 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import mongoose from 'mongoose';
 import { DatabaseService } from 'src/core/database/database.service';
 import { User, UserDocument } from 'src/core/database/schemas/user.schema';
 import { EmailQueueService } from 'src/core/integrations/emails/email-queue.service';
@@ -112,7 +111,7 @@ export class UserAuthService {
     lastName: string;
     passcode: string;
     phoneNumber: string;
-    avatar: string;
+    avatar?: string;
   }): Promise<{ token: string; user: User }> {
     try {
       const hashedPassword = await this.bcryptService.hashPassword(
@@ -121,7 +120,7 @@ export class UserAuthService {
       const hashedPin = await this.bcryptService.hashPassword(body.passcode);
 
       body.user.phoneNumber = body.phoneNumber;
-      body.user.avatar = body.avatar;
+      body.user.avatar = body.avatar!;
       body.user.auth.transactionPin = hashedPin;
       body.user.firstName = body.firstName;
       body.user.lastName = body.lastName;

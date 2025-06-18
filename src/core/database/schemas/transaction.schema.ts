@@ -96,6 +96,7 @@ export class Transaction {
         info: String,
       },
     ],
+    default: [],
   })
   additionalDetails: { title: TxInfoEnum; info: string }[];
 

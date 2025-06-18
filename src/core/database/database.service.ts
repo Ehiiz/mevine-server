@@ -8,7 +8,12 @@ import { Admin } from './schemas/admin.schema';
 import { Kyc } from './schemas/kyc.schema';
 import { AdminLog } from './schemas/admin-log.schema';
 import { ReferralRecord } from './schemas/referral-record.schema';
+import { Notification } from './schemas/notification.schema';
+import { Global } from '@nestjs/common';
 
+
+
+@Global()
 @Injectable()
 export class DatabaseService {
   constructor(

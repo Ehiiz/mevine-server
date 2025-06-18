@@ -111,7 +111,7 @@ export class AdminAuthService {
     firstName: string;
     lastName: string;
     passcode: string;
-    avatar: string;
+    avatar?: string;
   }): Promise<{ token: string; admin: Admin }> {
     try {
       const hashedPassword = await this.bcryptService.hashPassword(
@@ -119,7 +119,7 @@ export class AdminAuthService {
       );
       const hashedPin = await this.bcryptService.hashPassword(body.passcode);
 
-      body.admin.avatar = body.avatar;
+      body.admin.avatar = body.avatar!;
       body.admin.auth.transactionPin = hashedPin;
       body.admin.firstName = body.firstName;
       body.admin.lastName = body.lastName;

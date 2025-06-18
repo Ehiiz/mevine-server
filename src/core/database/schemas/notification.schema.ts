@@ -32,4 +32,4 @@ export class Notification {
   updatedAt: Date;
 }
 
-export const NoficationSchema = SchemaFactory.createForClass(Notification);
+export const NotificationSchema = SchemaFactory.createForClass(Notification);

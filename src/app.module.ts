@@ -16,6 +16,15 @@ import { format, transports } from 'winston';
 import * as DailyRotateFile from 'winston-daily-rotate-file';
 import { BankModule } from './modules/providers/bank/bank.module';
 import { VFDModule } from './modules/providers/bank/vfd/vfd.module';
+import { RouterModule } from '@nestjs/core';
+import { AdminUserModule } from './modules/admin/user/admin-user.module';
+import { AdminTransactionModule } from './modules/admin/transaction/admin-transaction.module';
+import { AdminAuthModule } from './modules/admin/auth/admin-auth.module';
+import { UserAuthModule } from './modules/user/auth/user-auth.module';
+import { UserProfileModule } from './modules/user/profile/user-profile.module';
+import { UserTransactionModule } from './modules/user/transaction/user-transaction.module';
+import { UserTransferModule } from './modules/user/transfer/transfer.module';
+import { DatabaseModule } from './core/database/database.module';
 
 @Module({
   imports: [
@@ -127,11 +136,61 @@ import { VFDModule } from './modules/providers/bank/vfd/vfd.module';
         ],
       }),
     }),
+    RouterModule.register([
+      {
+        path: 'user',
+        children: [
+          {
+            path: 'auth',
+            module: UserAuthModule,
+          },
+          {
+            path: 'profile',
+            module: UserProfileModule,
+          },
+          {
+            path: 'transaction',
+            module: UserTransactionModule,
+          },
+          {
+            path: 'transfer',
+            module: UserTransferModule,
+          },
+        ],
+      },
+    ]),
+    RouterModule.register([
+      {
+        path: 'admin',
+        children: [
+          {
+            path: 'user',
+            module: AdminUserModule,
+          },
+          {
+            path: 'transaction',
+            module: AdminTransactionModule,
+          },
+          {
+            path: 'auth',
+            module: AdminAuthModule,
+          },
+        ],
+      },
+    ]),
     // FirebaseModule,
+    DatabaseModule,
     EmailQueueModule,
     FcmModule,
     VFDModule,
     BankModule,
+    UserAuthModule,
+    UserProfileModule,
+    UserTransactionModule,
+    UserTransferModule,
+    AdminAuthModule,
+    AdminTransactionModule,
+    AdminUserModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -81,7 +81,7 @@ export class UserTransferService {
     }
   }
 
-  async getBillerList(body: { category: string }): Promise<Biller[]> {
+  async getBillerList(body: { category?: string }): Promise<Biller[]> {
     try {
       const { data } = await this.bankService.getBillerList(body.category);
       if (!data) {
@@ -136,8 +136,8 @@ export class UserTransferService {
     amount: number;
     division?: string;
     paymentItem?: string;
-    productId: string;
-    billerId: string;
+    productId?: string;
+    billerId?: string;
     phoneNumber?: string;
     accountNumber?: string;
     bankName?: string;
@@ -182,8 +182,8 @@ export class UserTransferService {
           amount: body.amount.toString(),
           paymentItem: body.paymentItem!,
           division: body.division!,
-          productId: body.productId,
-          billerId: body.billerId,
+          productId: body.productId!,
+          billerId: body.billerId!,
           reference: `MEV-${new Date()}`,
           transactionType: this.getTransactionType(body.service),
         });

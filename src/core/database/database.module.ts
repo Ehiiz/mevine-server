@@ -1,5 +1,5 @@
 import { Global, Module } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DatabaseService } from './database.service';
 import { User, UserSchema } from './schemas/user.schema';
@@ -12,18 +12,22 @@ import {
   ReferralRecordSchema,
 } from './schemas/referral-record.schema';
 import { Kyc, KycSchema } from './schemas/kyc.schema';
+import {
+  Notification,
+  NotificationSchema,
+} from './schemas/notification.schema';
 
 @Global()
 @Module({
   imports: [
     MongooseModule.forRootAsync({
-      imports: [ConfigService],
+      imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
         return {
           uri:
             configService.get<string>('MONGODB_URI') ||
             'mongodb://localhost:27017/mevinve',
-          options: { useNewUrlParser: true, useUnifiedTopology: true },
+          //  options: { useNewUrlParser: true, useUnifiedTopology: true },
         };
       },
       inject: [ConfigService],
@@ -60,6 +64,10 @@ import { Kyc, KycSchema } from './schemas/kyc.schema';
       {
         name: Kyc.name,
         schema: KycSchema,
+      },
+      {
+        name: Notification.name,
+        schema: NotificationSchema,
       },
     ]),
   ],
