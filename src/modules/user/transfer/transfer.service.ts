@@ -1,13 +1,17 @@
-import { NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { sha512 } from 'js-sha512';
 import { DatabaseService } from 'src/core/database/database.service';
-import { ITransferKey } from 'src/core/database/interfaces/shared.interface';
+import { ITransferKey } from 'src/core/interfaces/shared.interface';
 import {
   ServiceTypeEnum,
   TransactionEntityTypeEnum,
   TransactionStatusEnum,
   TxInfoEnum,
-} from 'src/core/database/interfaces/transaction.interface';
+} from 'src/core/interfaces/transaction.interface';
 import {
   Transaction,
   TransactionDocument,
@@ -24,6 +28,7 @@ import {
 } from 'src/modules/providers/bank/vfd/vfd.interface';
 import { VFDService } from 'src/modules/providers/bank/vfd/vfd.service';
 
+@Injectable()
 export class UserTransferService {
   constructor(
     private readonly bankService: VFDService,
@@ -173,7 +178,7 @@ export class UserTransferService {
         body.service === ServiceTypeEnum.airtime ||
         ServiceTypeEnum.cable ||
         ServiceTypeEnum.data ||
-        ServiceTypeEnum.electricty
+        ServiceTypeEnum.electricity
       ) {
         receipt = await this.billPayments({
           user: body.user,
@@ -233,7 +238,7 @@ export class UserTransferService {
         throw new NotFoundException('Error processing bill payment');
       }
 
-      if (service === ServiceTypeEnum.electricty) {
+      if (service === ServiceTypeEnum.electricity) {
         receipt.additionalDetails = [
           { title: TxInfoEnum.token, info: data.token! },
         ];

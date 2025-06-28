@@ -8,7 +8,7 @@ import {
   ServiceTypeEnum,
   TransactionTypeEnum,
   TransactionStatusEnum,
-} from '../interfaces/transaction.interface';
+} from '../../interfaces/transaction.interface';
 
 export type TransactionDocument = Transaction & Document;
 

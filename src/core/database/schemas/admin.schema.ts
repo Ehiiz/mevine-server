@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose, { Document } from 'mongoose';
-import { IAccountStatus, IAuth } from '../interfaces/shared.interface';
+import { IAccountStatus, IAuth } from '../../interfaces/shared.interface';
 
 export type AdminDocument = Admin & Document;
 
@@ -35,9 +35,11 @@ export class Admin {
       password: String,
       transactionPin: String,
       accountVerificationToken: String,
+      loginVerificationToken: String,
       passwordResetToken: String,
-      verificationTokenExpiration: String,
-      tokenExpiration: String,
+      verificationTokenExpiration: Date,
+      tokenExpiration: Date,
+      loginTokenExpiration: Date,
     },
   })
   auth: IAuth;
@@ -52,6 +54,10 @@ export class Admin {
         type: Boolean,
         default: false,
       },
+    },
+    default: {
+      accountVerified: false,
+      kycVerified: false,
     },
   })
   accountStatus: Omit<IAccountStatus, 'kycVerified'>;

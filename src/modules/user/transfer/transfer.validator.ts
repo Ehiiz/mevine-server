@@ -12,7 +12,7 @@ import {
   ServiceTypeEnum,
   TransactionTypeEnum,
   TransactionStatusEnum,
-} from 'src/core/database/interfaces/transaction.interface';
+} from 'src/core/interfaces/transaction.interface';
 import {
   Transaction, // For response typing in Controller
 } from 'src/core/database/schemas/transaction.schema';

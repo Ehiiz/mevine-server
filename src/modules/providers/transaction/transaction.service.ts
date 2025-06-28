@@ -7,7 +7,7 @@ import {
   ServiceTypeEnum,
   TransactionStatusEnum,
   TransactionTypeEnum,
-} from 'src/core/database/interfaces/transaction.interface';
+} from 'src/core/interfaces/transaction.interface';
 import mongoose from 'mongoose';
 import { Transaction } from 'src/core/database/schemas/transaction.schema';
 import { DatabaseService } from 'src/core/database/database.service';
@@ -37,7 +37,7 @@ export class TransactionService {
       const skip = (body.page - 1) * body.limit;
 
       if (body.search) {
-        const searchRegex = { $regex: body.search, options: 'i' };
+        const searchRegex = { $regex: body.search, $options: 'i' };
         query.$or = [
           { 'meta.paidFrom.entityId': searchRegex },
           {
@@ -152,9 +152,13 @@ export class TransactionService {
   }): Promise<{ transaction: Transaction }> {
     try {
       const transaction =
-        await this.databaseService.transactions.findByIdAndUpdate(body.id, {
-          status: body.status,
-        });
+        await this.databaseService.transactions.findByIdAndUpdate(
+          body.id,
+          {
+            status: body.status,
+          },
+          { new: true },
+        );
 
       if (!transaction) {
         throw new NotFoundException('Transaction not found');

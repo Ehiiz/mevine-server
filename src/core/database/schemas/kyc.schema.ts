@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose, { Document } from 'mongoose';
-import { IKycDocument } from '../interfaces/kyc.interface';
+import { IKycDocument } from '../../interfaces/kyc.interface';
 
 export type KycDocument = Kyc & Document;
 

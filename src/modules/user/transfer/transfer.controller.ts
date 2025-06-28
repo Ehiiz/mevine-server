@@ -29,6 +29,7 @@ import {
   ApiBody,
   ApiBearerAuth,
   ApiQuery,
+  ApiExtraModels,
 } from '@nestjs/swagger';
 import { Request } from 'express';
 import { UserDocument } from 'src/core/database/schemas/user.schema'; // Adjust path as necessary
@@ -43,12 +44,13 @@ import {
 import { Transaction } from 'src/core/database/schemas/transaction.schema';
 import { UserTransferService } from './transfer.service';
 import { AuthGuard } from 'src/core/guards/auth.guard';
-import { ErrorResponseDto } from 'src/core/database/interfaces/shared.interface';
+import { ErrorResponseDto } from 'src/core/interfaces/shared.interface';
 
 @ApiTags('User Transfers & Bills')
-@Controller('user/payments')
+@Controller('')
 @UseGuards(AuthGuard) // All routes in this controller require JWT authentication
 @ApiBearerAuth() // Indicates that these endpoints require a bearer token
+@ApiExtraModels(BankResponse)
 export class UserTransferController {
   constructor(private readonly userTransferService: UserTransferService) {}
 
