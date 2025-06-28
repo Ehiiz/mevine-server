@@ -23,20 +23,25 @@ import {
 import { Transaction } from 'src/core/database/schemas/transaction.schema'; // Import Transaction schema for typing
 import mongoose from 'mongoose'; // For mongoose.Types.ObjectId
 import { AuthGuard } from 'src/core/guards/auth.guard';
-import { ErrorResponseDto } from 'src/core/database/interfaces/shared.interface';
+import {
+  ErrorResponseDto,
+  WebServiceTypeEnum,
+} from 'src/core/interfaces/shared.interface';
 import {
   TransactionTypeEnum,
   ServiceTypeEnum,
   TransactionStatusEnum,
-} from 'src/core/database/interfaces/transaction.interface';
+} from 'src/core/interfaces/transaction.interface';
 import {
   FetchAllAdminTransactionsDto,
   FetchAnAdminTransactionParamDto,
   UpdateAdminTransactionStatusDto,
 } from './admin-transaction.validator';
+import { ServiceDecorator } from 'src/core/decorators/auth.decorator';
 
 @ApiTags('Admin Transactions')
-@Controller('admin/transactions')
+@Controller('')
+@ServiceDecorator(WebServiceTypeEnum.ADMIN)
 @UseGuards(AuthGuard) // All routes in this controller require JWT authentication for admins
 @ApiBearerAuth() // Indicates that these endpoints require a bearer token
 export class AdminTransactionController {

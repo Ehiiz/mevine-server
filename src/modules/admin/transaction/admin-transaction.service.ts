@@ -4,7 +4,7 @@ import {
   ServiceTypeEnum,
   TransactionStatusEnum,
   TransactionTypeEnum,
-} from 'src/core/database/interfaces/transaction.interface';
+} from 'src/core/interfaces/transaction.interface';
 import { Transaction } from 'src/core/database/schemas/transaction.schema';
 import { TransactionService } from 'src/modules/providers/transaction/transaction.service';
 

@@ -16,17 +16,28 @@ import {
   ApiBearerAuth,
   ApiQuery,
   ApiParam,
+  ApiExtraModels,
 } from '@nestjs/swagger';
 import { User } from 'src/core/database/schemas/user.schema'; // Import User schema for typing
 import mongoose from 'mongoose'; // For mongoose.Types.ObjectId
 import { AuthGuard } from 'src/core/guards/auth.guard';
-import { ErrorResponseDto } from 'src/core/database/interfaces/shared.interface';
-import { FetchUsersQueryDto, UserIdParamDto } from './admin-user.validator';
+import {
+  ErrorResponseDto,
+  WebServiceTypeEnum,
+} from 'src/core/interfaces/shared.interface';
+import {
+  FetchUsersQueryDto,
+  UserIdParamDto,
+  UserResponseSchema,
+} from './admin-user.validator';
+import { ServiceDecorator } from 'src/core/decorators/auth.decorator';
 
 @ApiTags('Admin User Management')
-@Controller('admin/users')
+@Controller('')
+@ServiceDecorator(WebServiceTypeEnum.ADMIN) // Custom decorator to indicate this is an admin service
 @UseGuards(AuthGuard) // All routes in this controller require JWT authentication for admins
 @ApiBearerAuth() // Indicates that these endpoints require a bearer token
+@ApiExtraModels(UserResponseSchema)
 export class AdminUserController {
   constructor(private readonly adminUserService: AdminUserService) {}
 

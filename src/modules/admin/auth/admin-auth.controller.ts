@@ -28,8 +28,12 @@ import {
 } from '@nestjs/swagger';
 import { Request } from 'express';
 import { AdminDocument, Admin } from 'src/core/database/schemas/admin.schema'; // Adjust path as necessary
-import { ErrorResponseDto } from 'src/core/database/interfaces/shared.interface';
+import {
+  ErrorResponseDto,
+  WebServiceTypeEnum,
+} from 'src/core/interfaces/shared.interface';
 import { AuthGuard } from 'src/core/guards/auth.guard';
+import { ServiceDecorator } from 'src/core/decorators/auth.decorator';
 
 @ApiTags('Admin Authentication')
 @Controller('')
@@ -145,6 +149,7 @@ export class AdminAuthController {
     }
   }
 
+  @ServiceDecorator(WebServiceTypeEnum.ADMIN)
   @UseGuards(AuthGuard) // Assuming 'jwt' strategy is configured for admins
   @ApiBearerAuth()
   @Post('complete-account-setup')
@@ -433,6 +438,7 @@ export class AdminAuthController {
     }
   }
 
+  @ServiceDecorator(WebServiceTypeEnum.ADMIN)
   @UseGuards(AuthGuard)
   @ApiBearerAuth()
   @Post('change-password')

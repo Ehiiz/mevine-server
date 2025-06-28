@@ -16,7 +16,7 @@ import {
   TransactionTypeEnum,
   ServiceTypeEnum,
   TransactionStatusEnum,
-} from 'src/core/database/interfaces/transaction.interface';
+} from 'src/core/interfaces/transaction.interface';
 
 export class FetchAllAdminTransactionsDto {
   @ApiProperty({

@@ -1,3 +1,4 @@
+import { an } from '@faker-js/faker/dist/airline-BUL6NtOJ';
 import {
   Injectable,
   NotFoundException,
@@ -37,14 +38,14 @@ export class AdminAuthService {
       });
 
       if (existingAdmin) {
-        throw Error('User already exists');
+        throw Error('Admin already exists');
       }
 
       const code = generateRandomDigits();
-      const hashedCode = this.bcryptService.hashPassword(code);
+      const hashedCode = await this.bcryptService.hashPassword(code);
 
       const now = new Date();
-      now.setMinutes(now.getHours() + 7);
+      now.setMinutes(now.getMinutes() + 30);
 
       const admin = await this.databaseService.admins.create({
         email: body.email,
@@ -88,16 +89,20 @@ export class AdminAuthService {
         throw new UnauthorizedException('Invalid unauthorized token');
       }
 
-      if (admin.auth.verificationTokenExpiration! > new Date()) {
+      if (admin.auth.verificationTokenExpiration! <= new Date()) {
         throw new UnauthorizedException('Token has expired');
+      }
+
+      if (!admin.accountStatus) {
+        admin.accountStatus = {} as any;
       }
 
       admin.auth.verificationTokenExpiration = null;
       admin.auth.accountVerificationToken = null;
       admin.accountStatus.accountVerified = true;
+      const token = this.jwtService.sign({ id: admin.id });
 
       await admin.save();
-      const token = this.jwtService.sign({ id: admin.id });
 
       return { token };
     } catch (error) {
@@ -149,10 +154,14 @@ export class AdminAuthService {
       });
 
       if (!admin) {
-        throw new NotFoundException('User not found, Please signup');
+        throw new NotFoundException('Admin not found, Please signup');
       }
 
       const loginCode = generateRandomDigits();
+
+      if (!admin.auth) {
+        admin.auth = {} as any;
+      }
 
       admin.auth.loginVerificationToken =
         await this.bcryptService.hashPassword(loginCode);
@@ -204,7 +213,7 @@ export class AdminAuthService {
         throw new UnauthorizedException('Invalid unauthorized token');
       }
 
-      if (admin.auth.loginTokenExpiration! > new Date()) {
+      if (admin.auth.loginTokenExpiration! <= new Date()) {
         throw new UnauthorizedException('Token has expired');
       }
 
@@ -272,7 +281,7 @@ export class AdminAuthService {
         throw new UnauthorizedException('Invalid unauthorized token');
       }
 
-      if (admin.auth.tokenExpiration! > new Date()) {
+      if (admin.auth.tokenExpiration! <= new Date()) {
         throw new UnauthorizedException('Token has expired');
       }
 
@@ -307,7 +316,7 @@ export class AdminAuthService {
         throw new UnauthorizedException('Invalid unauthorized token');
       }
 
-      if (admin.auth.tokenExpiration! > new Date()) {
+      if (admin.auth.tokenExpiration! <= new Date()) {
         throw new UnauthorizedException('Token has expired');
       }
 
@@ -332,6 +341,7 @@ export class AdminAuthService {
     oldPassword: string;
   }): Promise<{ verified: boolean }> {
     try {
+      console.log('Changing password for admin:', body.admin.email);
       const match = await this.bcryptService.comparePassword({
         password: body.oldPassword,
         hashedPassword: body.admin.auth.password!,
