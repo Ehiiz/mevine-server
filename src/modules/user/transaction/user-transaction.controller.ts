@@ -23,12 +23,12 @@ import { AuthGuard } from 'src/core/guards/auth.guard';
 import {
   TransactionTypeEnum,
   ServiceTypeEnum,
-} from 'src/core/database/interfaces/transaction.interface';
+} from 'src/core/interfaces/transaction.interface';
 import {
   FetchAllTransactionsDto,
   FetchATransactionParamDto,
 } from './user-transaction.validator';
-import { ErrorResponseDto } from 'src/core/database/interfaces/shared.interface';
+import { ErrorResponseDto } from 'src/core/interfaces/shared.interface';
 
 @ApiTags('User Transactions')
 @Controller()

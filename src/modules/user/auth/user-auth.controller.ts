@@ -28,9 +28,9 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { Request } from 'express'; // Import Request from express
-import { UserDocument } from 'src/core/database/schemas/user.schema'; // Adjust path as necessary
+import { User, UserDocument } from 'src/core/database/schemas/user.schema'; // Adjust path as necessary
 import { AuthGuard } from 'src/core/guards/auth.guard';
-import { ErrorResponseDto } from 'src/core/database/interfaces/shared.interface';
+import { ErrorResponseDto } from 'src/core/interfaces/shared.interface';
 
 @ApiTags('User Authentication')
 @Controller('')
@@ -308,6 +308,27 @@ export class UserAuthController {
                   type: 'string',
                   example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
                 },
+                user: {
+                  type: 'object',
+                  description: 'The updated user object',
+                  properties: {
+                    _id: {
+                      type: 'string',
+                      example: '60c72b2f9b1d8e001c8a1b2d',
+                    },
+                    email: { type: 'string', example: 'user@example.com' },
+                    firstName: { type: 'string', example: 'Jane' },
+                    lastName: { type: 'string', example: 'Doe' },
+                    avatar: {
+                      type: 'string',
+                      example: 'https://example.com/new-avatar.jpg',
+                      nullable: true,
+                    },
+                    location: { type: 'string', example: 'Lagos, Nigeria' },
+                    phoneNumber: { type: 'string', example: '+2348012345678' },
+                    // Add other relevant user properties here
+                  },
+                },
               },
             },
           },
@@ -327,13 +348,13 @@ export class UserAuthController {
   })
   async verifyLoginCode(
     @Body() body: VerifyLoginCodeDto,
-  ): Promise<{ message: string; data: { token: string } }> {
+  ): Promise<{ message: string; data: { token: string; user: User } }> {
     try {
-      const { token } = await this.userAuthService.verifyLoginCode(body);
+      const { token, user } = await this.userAuthService.verifyLoginCode(body);
       // Actual runtime response
       return {
         message: 'Login successful.',
-        data: { token },
+        data: { token, user },
       };
     } catch (error) {
       throw error;

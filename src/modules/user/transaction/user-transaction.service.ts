@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   ServiceTypeEnum,
   TransactionTypeEnum,
-} from 'src/core/database/interfaces/transaction.interface';
+} from 'src/core/interfaces/transaction.interface';
 import mongoose from 'mongoose';
 import { Transaction } from 'src/core/database/schemas/transaction.schema';
 import { TransactionService } from 'src/modules/providers/transaction/transaction.service';

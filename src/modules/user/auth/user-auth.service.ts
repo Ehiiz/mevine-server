@@ -1,8 +1,11 @@
 import {
+  ConflictException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { DatabaseService } from 'src/core/database/database.service';
 import { User, UserDocument } from 'src/core/database/schemas/user.schema';
@@ -18,12 +21,16 @@ import { generateRandomDigits } from 'src/core/utils/random-generator.util';
 
 @Injectable()
 export class UserAuthService {
+  // private secret: string;
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly jwtService: JwtService,
     private readonly bcryptService: BcryptService,
     private readonly emailQueueService: EmailQueueService,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    // this.secret = this.configService.get<string>('JWT_SECRET')!;
+  }
 
   async createAccount(body: {
     email: string;
@@ -35,14 +42,58 @@ export class UserAuthService {
       });
 
       if (existingUser) {
-        throw Error('User already exists');
+        // Check if the existing user is already verified
+        if (existingUser.accountStatus?.accountVerified) {
+          throw new ConflictException(
+            'User with this email already exists and is already verified.',
+          );
+        } else {
+          // User exists but is NOT verified (or verification status is missing/false).
+          // Re-send a new verification token.
+          console.log(
+            `Existing unverified user found: ${existingUser.email}. Generating new verification token.`,
+          );
+
+          const newCode = generateRandomDigits();
+          const newHashedCode = await this.bcryptService.hashPassword(newCode);
+
+          const now = new Date();
+          now.setMinutes(now.getMinutes() + 30); // Set new expiration to 30 minutes from now
+
+          // Ensure user.auth object exists
+          if (!existingUser.auth) {
+            existingUser.auth = {} as any;
+          }
+          existingUser.auth.accountVerificationToken = newHashedCode;
+          existingUser.auth.verificationTokenExpiration = now;
+
+          // Ensure user.accountStatus exists and explicitly set accountVerified to false
+          // if it's not already true. This handles cases where accountStatus or accountVerified
+          // might be undefined.
+          if (!existingUser.accountStatus) {
+            existingUser.accountStatus = { accountVerified: false } as any;
+          } else {
+            existingUser.accountStatus.accountVerified = false; // Ensure it's false for re-verification
+          }
+          // If you were using markModified: existingUser.markModified('auth');
+          // If you were using markModified: existingUser.markModified('accountStatus');
+
+          await existingUser.save(); // Save the updated existing user with new token
+
+          const event = new UserRegisteredEvent(existingUser.email, newCode);
+          await this.emailQueueService.handleEmailEvent(event);
+
+          // Return the updated existing user and the new plain-text code
+          return { user: existingUser, code: newCode };
+        }
       }
 
+      // --- Original logic for creating a brand new user (if no existingUser found) ---
       const code = generateRandomDigits();
-      const hashedCode = this.bcryptService.hashPassword(code);
+      const hashedCode = await this.bcryptService.hashPassword(code);
 
       const now = new Date();
-      now.setMinutes(now.getHours() + 7);
+      now.setMinutes(now.getMinutes() + 30); // 30 minutes expiration for new users
 
       const user = await this.databaseService.users.create({
         email: body.email,
@@ -51,10 +102,14 @@ export class UserAuthService {
           accountVerificationToken: hashedCode,
           verificationTokenExpiration: now,
         },
+        // Initialize accountStatus for a new user, ensuring it's never undefined
+        accountStatus: {
+          accountVerified: false,
+          completeSetup: false, // Assuming default for new accounts
+        },
       });
 
       const event = new UserRegisteredEvent(body.email, code);
-
       await this.emailQueueService.handleEmailEvent(event);
 
       return { user, code };
@@ -87,16 +142,20 @@ export class UserAuthService {
         throw new UnauthorizedException('Invalid unauthorized token');
       }
 
-      if (user.auth.verificationTokenExpiration! > new Date()) {
+      if (user.auth.verificationTokenExpiration! <= new Date()) {
         throw new UnauthorizedException('Token has expired');
+      }
+
+      if (!user.accountStatus) {
+        user.accountStatus = {} as any;
       }
 
       user.auth.verificationTokenExpiration = null;
       user.auth.accountVerificationToken = null;
       user.accountStatus.accountVerified = true;
+      const token = this.jwtService.sign({ id: user.id });
 
       await user.save();
-      const token = this.jwtService.sign({ id: user.id });
 
       return { token };
     } catch (error) {
@@ -119,22 +178,29 @@ export class UserAuthService {
       );
       const hashedPin = await this.bcryptService.hashPassword(body.passcode);
 
+      // Update user fields
       body.user.phoneNumber = body.phoneNumber;
-      body.user.avatar = body.avatar!;
-      body.user.auth.transactionPin = hashedPin;
+      body.user.avatar = body.avatar || body.user.avatar; // Handle optional avatar
       body.user.firstName = body.firstName;
       body.user.lastName = body.lastName;
+
+      // Update nested auth fields and mark as modified
+      body.user.auth.transactionPin = hashedPin;
       body.user.auth.password = hashedPassword;
+
+      // Update nested accountStatus and mark as modified
       body.user.accountStatus.completeSetup = true;
-      const token = this.jwtService.sign({ id: body.user.id });
 
       await body.user.save();
 
+      // Generate token after successful save
+      const token = this.jwtService.sign({ id: body.user.id });
+
+      // Send email notification
       const event = new UserCompleteSetupEvent(
         body.user.email,
         `${body.user.firstName} ${body.user.lastName}`,
       );
-
       await this.emailQueueService.handleEmailEvent(event);
 
       return { token, user: body.user };
@@ -151,6 +217,12 @@ export class UserAuthService {
 
       if (!user) {
         throw new NotFoundException('User not found, Please signup');
+      }
+
+      if (!user.accountStatus || user.accountStatus?.completeSetup !== true) {
+        throw new NotFoundException(
+          'User has not completed account setup, Sign up ',
+        );
       }
 
       const loginCode = generateRandomDigits();
@@ -177,7 +249,7 @@ export class UserAuthService {
   async verifyLoginCode(body: {
     code: string;
     email: string;
-  }): Promise<{ token: string }> {
+  }): Promise<{ token: string; user: User }> {
     try {
       const user = await this.databaseService.users.findOne({
         email: body.email,
@@ -196,7 +268,7 @@ export class UserAuthService {
         throw new UnauthorizedException('Invalid unauthorized token');
       }
 
-      if (user.auth.loginTokenExpiration! > new Date()) {
+      if (user.auth.loginTokenExpiration! <= new Date()) {
         throw new UnauthorizedException('Token has expired');
       }
 
@@ -207,7 +279,7 @@ export class UserAuthService {
 
       const token = this.jwtService.sign({ id: user.id });
 
-      return { token };
+      return { token, user: user.toJSON() as User };
     } catch (error) {
       throw error;
     }
@@ -264,7 +336,7 @@ export class UserAuthService {
         throw new UnauthorizedException('Invalid unauthorized token');
       }
 
-      if (user.auth.tokenExpiration! > new Date()) {
+      if (user.auth.tokenExpiration! <= new Date()) {
         throw new UnauthorizedException('Token has expired');
       }
 
@@ -299,7 +371,7 @@ export class UserAuthService {
         throw new UnauthorizedException('Invalid unauthorized token');
       }
 
-      if (user.auth.tokenExpiration! > new Date()) {
+      if (user.auth.tokenExpiration! <= new Date()) {
         throw new UnauthorizedException('Token has expired');
       }
 
