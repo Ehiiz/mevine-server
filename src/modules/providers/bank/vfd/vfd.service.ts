@@ -66,7 +66,7 @@ export class VFDHttpServiceFactory {
       headers: {
         'Content-Type': 'application/json',
         AccessToken:
-          this.configService.get<string>('WALLET_ACCESS_TOKEN') ?? '',
+          this.configService.get<string>('VFD_WALLET_ACCESS_TOKEN') ?? '',
       },
       timeout: 30000,
       maxRedirects: 5,
@@ -81,7 +81,8 @@ export class VFDHttpServiceFactory {
         this.configService.get<string>('VFD_BILLSPAYMENT_BASE_URL') ?? '',
       headers: {
         'Content-Type': 'application/json',
-        AccessToken: this.configService.get<string>('BILLS_ACCESS_TOKEN') ?? '',
+        AccessToken:
+          this.configService.get<string>('VFD_WALLET_ACCESS_TOKEN') ?? '',
       },
       timeout: 30000,
       maxRedirects: 5,
@@ -490,6 +491,7 @@ export class VFDService {
    * Returns a list of biller categories.
    */
   async getBillerCategories(): Promise<BillerCategoryResponse> {
+    console.log('I got here');
     const urlPath = this.buildUrlPath(VFDUrls.BILLS_PAYMENT_BILLER_CATEGORY);
     this.logger.debug(
       `Fetching biller categories from bills payment API using path: ${urlPath}`,

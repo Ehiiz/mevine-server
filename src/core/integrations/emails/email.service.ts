@@ -4,7 +4,7 @@ import * as path from 'path';
 import * as nodemailer from 'nodemailer';
 import { ConfigService } from '@nestjs/config';
 import { BaseEmailEvent } from './email.utils';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 export interface MailAttachment {
   filename: string;
@@ -15,18 +15,24 @@ export interface MailAttachment {
 
 @Injectable()
 export class EmailService {
-  constructor(public readonly configService: ConfigService) {}
-
-  public transporter = nodemailer.createTransport({
-    host: `${process.env.NODEMAILER_HOST}`,
-    port: `${process.env.NODEMAILER_PORT}`,
-    secure: true,
-    auth: {
-      user: `${process.env.NODEMAILER_USER}`,
-      pass: `${process.env.NODEMAILER_PASS}`,
-    },
-    from: `Mevine <${process.env.NODEMAILER_USER}>`,
-  });
+  private readonly logger = new Logger(EmailService.name);
+  public transporter: nodemailer.Transporter;
+  constructor(public readonly configService: ConfigService) {
+    this.logger.debug(
+      'Initializing EmailService...',
+      this.configService.get<string>('NODEMAILER_HOST'),
+    );
+    this.transporter = nodemailer.createTransport({
+      host: this.configService.get<string>('NODEMAILER_HOST')!,
+      port: parseInt(this.configService.get<string>('NODEMAILER_PORT')!, 10), // Port should be a number
+      secure: this.configService.get<boolean>('NODEMAILER_SECURE') ?? true, // Assuming secure is true by default or configurable
+      auth: {
+        user: this.configService.get<string>('NODEMAILER_USER')!,
+        pass: this.configService.get<string>('NODEMAILER_PASS')!,
+      },
+      from: `Mevine <${this.configService.get<string>('NODEMAILER_USER')!}>`,
+    });
+  }
 
   private generateEmailHelpers(templateName: string, payload: any) {
     const templatePath = path.join(
@@ -70,13 +76,19 @@ export class EmailService {
   async sendMail(mailOptions: {
     to: string;
     subject: string;
-    html: string; // html template
+    html: string;
     attachments?: MailAttachment[];
   }) {
-    const sendOptions = {
-      ...mailOptions,
-      from: `Mevine <${this.configService.get<string>('NODEMAILER_USER')!}>`,
-    };
-    await this.transporter.sendMail(sendOptions);
+    try {
+      const sendOptions = {
+        ...mailOptions,
+        from: `Mevine <${this.configService.get<string>('NODEMAILER_USER')!}>`,
+      };
+      await this.transporter.sendMail(sendOptions);
+      this.logger.log(`Email sent successfully to: ${mailOptions.to}`); // Add success log
+    } catch (error) {
+      this.logger.error(`Failed to send email to ${mailOptions.to}:`, error);
+      throw error; // <-- THIS IS THE KEY CHANGE! Re-throw the error
+    }
   }
 }

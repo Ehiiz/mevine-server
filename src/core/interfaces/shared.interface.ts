@@ -49,3 +49,8 @@ export interface ITransferKey {
   signature: string;
   reference: string;
 }
+
+export enum WebServiceTypeEnum {
+  ADMIN = 'ADMIN',
+  USER = 'USER',
+}

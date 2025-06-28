@@ -7,7 +7,7 @@ import { EmailService } from '../integrations/emails/email.service'; // Assuming
 export class FatalErrorMailTransport extends Transport {
   // Inject your existing EmailService
   constructor(private readonly emailService: EmailService) {
-    super({ level: 'fatal' }); // Only listen for the 'fatal' level
+    super({ level: 'error' }); // Only listen for the 'fatal' level
   }
 
   /**
@@ -20,8 +20,12 @@ export class FatalErrorMailTransport extends Transport {
     setImmediate(() => {
       this.emit('logged', info);
     });
+    console.log('FatalErrorMailTransport log called');
+    console.log(info.level);
+    console.log('Initializing Email Service');
+    console.log(this.emailService.configService.get<string>('NODEMAILER_HOST'));
 
-    if (info.level === 'fatal') {
+    if (info.level === 'error' || info.level === 'fatal') {
       try {
         const subject = 'FATAL ERROR Detected in Application';
         const html = `

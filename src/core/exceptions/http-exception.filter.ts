@@ -35,14 +35,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
 
     // This is the crucial part: log the unhandled exception as 'fatal'
-    this.logger.fatal(`Unhandled Exception: ${exception}`, {
+    this.logger.error(`Unhandled Exception: ${exception}`, {
       stack: exception instanceof Error ? exception.stack : '',
       path: request.url,
       method: request.method,
       ip: request.ip,
       body: request.body,
     });
-
     response.status(status).json({
       statuscode: status,
       timestamp: new Date().toISOString(),

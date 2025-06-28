@@ -1,53 +1,53 @@
 export enum TransactionStatusEnum {
-  initiated,
-  pending,
-  processing,
-  completed,
-  cancelled,
-  failed,
+  initiated = 'initiated',
+  pending = 'pending',
+  processing = 'processing',
+  completed = 'completed',
+  cancelled = 'cancelled',
+  failed = 'failed',
 }
 
 export enum ServiceTypeEnum {
-  airtime,
-  data,
-  cable,
-  electricty,
-  giftcard,
-  transfer,
-  crypto,
+  airtime = 'airtime',
+  data = 'data',
+  cable = 'cable',
+  electricity = 'electricity', // Corrected typo: electricty -> electricity
+  giftcard = 'giftcard',
+  transfer = 'transfer',
+  crypto = 'crypto',
 }
 
 export enum TransactionTypeEnum {
-  funding,
-  transfer,
-  withdrawal,
-  charges,
-  commission,
-  refund,
-  reversal,
-  request,
+  funding = 'funding',
+  transfer = 'transfer',
+  withdrawal = 'withdrawal',
+  charges = 'charges',
+  commission = 'commission',
+  refund = 'refund',
+  reversal = 'reversal',
+  request = 'request',
 }
 
 export enum TransactionEntityTypeEnum {
-  user,
-  airtime,
-  data,
-  cable,
-  electricity,
-  giftcard,
-  crypto,
-  external,
+  user = 'user',
+  airtime = 'airtime',
+  data = 'data',
+  cable = 'cable',
+  electricity = 'electricity', // Corrected typo: electricty -> electricity
+  giftcard = 'giftcard',
+  crypto = 'crypto',
+  external = 'external',
 }
 
 export enum TxInfoEnum {
-  token,
-  general,
-  error,
-  info,
+  token = 'token',
+  general = 'general',
+  error = 'error',
+  info = 'info',
 }
 
 export interface IMetaInfo {
-  /* 
+  /*
     For user this will store the mongoId
     for other services it will store the service id
     as provided by the provider
@@ -58,19 +58,19 @@ export interface IMetaInfo {
     in most instances it will be the user as he is key
     actor but it could also carry others in the case of a transfer */
   entityType: TransactionEntityTypeEnum;
-  /* For user this will carry the bank code 
+  /* For user this will carry the bank code
     from which it transfers from.
     Bank code will usually be stored in user doc
     For  entities like data and cable
     it will carry the plancode of the service
-    For airtime and electricity it will repeat the serviceId 
+    For airtime and electricity it will repeat the serviceId
     For crypto is will store the crypto address
     */
   entityCode: string;
   /*
     For user it will carry the account number stored
     in db. For data, airtime, cable and others,
-    it will carry the phonenumber, decoder number 
+    it will carry the phonenumber, decoder number
     or meter number respectively
     For crypto is will store the crypto address
     */
@@ -78,8 +78,8 @@ export interface IMetaInfo {
   /*
     For user it will carry the bank name stored
     in db. For data, airtime, cable and others,
-    it will carry the plan name. For electricty
-    it will store the amount and meter number 
+    it will carry the plan name. For electricity
+    it will store the amount and meter number
     concatted
     For crypto is will store the provider address
     concatted with the user name
