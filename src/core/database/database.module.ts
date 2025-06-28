@@ -13,6 +13,10 @@ import {
 } from './schemas/referral-record.schema';
 import { Kyc, KycSchema } from './schemas/kyc.schema';
 import {
+  UserNotification,
+  UserNotificationSchema,
+} from './schemas/user-notification.schema';
+import {
   Notification,
   NotificationSchema,
 } from './schemas/notification.schema';
@@ -68,6 +72,11 @@ import {
       {
         name: Notification.name,
         schema: NotificationSchema,
+      },
+
+      {
+        name: UserNotification.name,
+        schema: UserNotificationSchema,
       },
     ]),
   ],

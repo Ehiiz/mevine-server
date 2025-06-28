@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { JwtModule } from '@nestjs/jwt';
+import { JwtModule, JwtService } from '@nestjs/jwt';
 import { BullModule } from '@nestjs/bullmq';
 import { MulterModule } from '@nestjs/platform-express';
 import { EmailQueueModule } from './core/integrations/emails/email-queue.module';
@@ -25,6 +25,9 @@ import { UserProfileModule } from './modules/user/profile/user-profile.module';
 import { UserTransactionModule } from './modules/user/transaction/user-transaction.module';
 import { UserTransferModule } from './modules/user/transfer/transfer.module';
 import { DatabaseModule } from './core/database/database.module';
+import { SeedModule } from './modules/seed/seed.module';
+import { UserNotificationsModule } from './modules/user/notification/user-notification.module';
+import { AdminNotificationModule } from './modules/admin/notification/admin-notification.module';
 
 @Module({
   imports: [
@@ -36,7 +39,13 @@ import { DatabaseModule } from './core/database/database.module';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
-        const secret = configService.get<string>('JWT_SECRET')!;
+        const secret = configService.get<string>('JWT_SECRET');
+        if (!secret) {
+          // Log an error or throw a more specific exception if the secret is missing
+          // This ensures you catch the issue early during application startup
+          console.error('JWT_SECRET is not defined in environment variables!');
+          throw new Error('JWT_SECRET environment variable is required.');
+        }
         return {
           secret: secret,
           global: true,
@@ -45,6 +54,7 @@ import { DatabaseModule } from './core/database/database.module';
           },
         };
       },
+      global: true,
       inject: [ConfigService],
     }),
     BullModule.forRootAsync({
@@ -156,6 +166,10 @@ import { DatabaseModule } from './core/database/database.module';
             path: 'transfer',
             module: UserTransferModule,
           },
+          {
+            path: 'notification',
+            module: UserNotificationsModule,
+          },
         ],
       },
     ]),
@@ -175,10 +189,15 @@ import { DatabaseModule } from './core/database/database.module';
             path: 'auth',
             module: AdminAuthModule,
           },
+          {
+            path: 'notification',
+            module: AdminNotificationModule,
+          },
         ],
       },
     ]),
     // FirebaseModule,
+
     DatabaseModule,
     EmailQueueModule,
     FcmModule,
@@ -188,11 +207,14 @@ import { DatabaseModule } from './core/database/database.module';
     UserProfileModule,
     UserTransactionModule,
     UserTransferModule,
+    UserNotificationsModule,
     AdminAuthModule,
     AdminTransactionModule,
     AdminUserModule,
+    AdminNotificationModule,
+    ...(process.env.NODE_ENV === 'development' ? [SeedModule] : []),
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, JwtService],
 })
 export class AppModule {}

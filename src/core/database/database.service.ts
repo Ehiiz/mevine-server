@@ -10,8 +10,7 @@ import { AdminLog } from './schemas/admin-log.schema';
 import { ReferralRecord } from './schemas/referral-record.schema';
 import { Notification } from './schemas/notification.schema';
 import { Global } from '@nestjs/common';
-
-
+import { UserNotification } from './schemas/user-notification.schema';
 
 @Global()
 @Injectable()
@@ -28,6 +27,8 @@ export class DatabaseService {
     @InjectModel(AdminLog.name) private readonly adminLogModel: Model<AdminLog>,
     @InjectModel(ReferralRecord.name)
     private readonly referralRecordModel: Model<ReferralRecord>,
+    @InjectModel(UserNotification.name)
+    private readonly userNotificationModel: Model<UserNotification>,
   ) {}
 
   get users(): Model<User> {
@@ -60,5 +61,9 @@ export class DatabaseService {
 
   get referralRecords(): Model<ReferralRecord> {
     return this.referralRecordModel;
+  }
+
+  get userNotifications(): Model<UserNotification> {
+    return this.userNotificationModel;
   }
 }
