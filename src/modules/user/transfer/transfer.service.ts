@@ -2,6 +2,8 @@ import {
   Injectable,
   NotFoundException,
   UnauthorizedException,
+  BadRequestException, // For insufficient balance
+  InternalServerErrorException, // For general transaction errors
 } from '@nestjs/common';
 import { sha512 } from 'js-sha512';
 import { DatabaseService } from 'src/core/database/database.service';
@@ -10,13 +12,14 @@ import {
   ServiceTypeEnum,
   TransactionEntityTypeEnum,
   TransactionStatusEnum,
+  TransactionTypeEnum,
   TxInfoEnum,
 } from 'src/core/interfaces/transaction.interface';
 import {
   Transaction,
   TransactionDocument,
 } from 'src/core/database/schemas/transaction.schema';
-import { User } from 'src/core/database/schemas/user.schema';
+import { UserDocument } from 'src/core/database/schemas/user.schema'; // Import UserDocument
 import { BcryptService } from 'src/core/security/bcrypt.service';
 import {
   Bank,
@@ -27,6 +30,8 @@ import {
   TransferRecipientResponseData,
 } from 'src/modules/providers/bank/vfd/vfd.interface';
 import { VFDService } from 'src/modules/providers/bank/vfd/vfd.service';
+import * as mongoose from 'mongoose'; // Import mongoose for sessions
+import { WalletDocument } from 'src/core/database/schemas/wallet.schema';
 
 @Injectable()
 export class UserTransferService {
@@ -39,11 +44,9 @@ export class UserTransferService {
   async getBanks(): Promise<Bank[]> {
     try {
       const { data } = await this.bankService.fetchBanks();
-
       if (!data) {
         throw new NotFoundException('Bank lists cannot be fetched');
       }
-
       return data;
     } catch (error) {
       throw error;
@@ -63,10 +66,9 @@ export class UserTransferService {
 
       if (!data) {
         throw new NotFoundException(
-          'Account owner not verified, Please check and reconfirm',
+          'Account owner not verified. Please check and reconfirm.',
         );
       }
-
       return data;
     } catch (error) {
       throw error;
@@ -77,9 +79,8 @@ export class UserTransferService {
     try {
       const { data } = await this.bankService.getBillerCategories();
       if (!data) {
-        throw new NotFoundException('Billers categories cannot be found');
+        throw new NotFoundException('Biller categories cannot be found.');
       }
-
       return data;
     } catch (error) {
       throw error;
@@ -90,9 +91,8 @@ export class UserTransferService {
     try {
       const { data } = await this.bankService.getBillerList(body.category);
       if (!data) {
-        throw new NotFoundException('Billers list cannot be fetched');
+        throw new NotFoundException('Biller list cannot be fetched.');
       }
-
       return data;
     } catch (error) {
       throw error;
@@ -107,9 +107,8 @@ export class UserTransferService {
     try {
       const { data } = await this.bankService.getBillerItems(body);
       if (!data) {
-        throw new NotFoundException('Biller items cannot be fetched');
+        throw new NotFoundException('Biller items cannot be fetched.');
       }
-
       return data;
     } catch (error) {
       throw error;
@@ -125,9 +124,8 @@ export class UserTransferService {
     try {
       const data = await this.bankService.validateCustomer(body);
       if (!data) {
-        throw new NotFoundException('Biller items cannot be fetched');
+        throw new NotFoundException('Customer validation failed.');
       }
-
       return data;
     } catch (error) {
       throw error;
@@ -135,7 +133,7 @@ export class UserTransferService {
   }
 
   async processTransaction(body: {
-    user: User;
+    user: UserDocument; // Ensure it's UserDocument for wallet access
     transactionPin: string;
     service: ServiceTypeEnum;
     amount: number;
@@ -151,91 +149,153 @@ export class UserTransferService {
     customerId?: string;
     remark: string;
   }): Promise<Transaction> {
+    const session = await this.databaseService.users.startSession(); // Start a Mongoose session
+    session.startTransaction(); // Start a transaction
+
     try {
+      // 1. Verify Transaction Pin
       const match = await this.bcryptService.comparePassword({
         password: body.transactionPin,
         hashedPassword: body.user.auth.transactionPin!,
       });
-
       if (!match) {
-        throw new UnauthorizedException('Invalid transaction pin');
+        throw new UnauthorizedException('Invalid transaction pin.');
       }
 
-      let receipt: Transaction;
+      // 2. Deduct Balance (Atomic with transaction)
+      // Pass the session to ensure all balance updates are part of the transaction
+      await this.deductUserBalance(body.user, body.amount, session);
 
+      let receipt: TransactionDocument;
+
+      // 3. Process Service Specific Logic
       if (body.service === ServiceTypeEnum.transfer) {
-        receipt = await this.processFundsTransfer({
-          user: body.user,
-          amount: body.amount.toString(),
-          remark: body.remark,
-          transferType: this.getTransferType(body.bankCode!),
-          reference: `MEV-${new Date()}`,
-          accountNumber: body.accountNumber!,
-          bankCode: body.bankCode!,
-          service: body.service,
-        });
+        receipt = await this.processFundsTransfer(
+          {
+            user: body.user,
+            amount: body.amount.toString(),
+            remark: body.remark,
+            transferType: this.getTransferType(body.bankCode!),
+            reference: `MEV-${new Date().getTime()}`, // Use timestamp for uniqueness
+            accountNumber: body.accountNumber!,
+            bankCode: body.bankCode!,
+            service: body.service,
+          },
+          session, // Pass session
+        );
       } else if (
         body.service === ServiceTypeEnum.airtime ||
-        ServiceTypeEnum.cable ||
-        ServiceTypeEnum.data ||
-        ServiceTypeEnum.electricity
+        body.service === ServiceTypeEnum.cable || // Fix: Ensure logical OR for all services
+        body.service === ServiceTypeEnum.data ||
+        body.service === ServiceTypeEnum.electricity
       ) {
-        receipt = await this.billPayments({
-          user: body.user,
-          service: body.service,
-          customerId: body.customerId!,
-          amount: body.amount.toString(),
-          paymentItem: body.paymentItem!,
-          division: body.division!,
-          productId: body.productId!,
-          billerId: body.billerId!,
-          reference: `MEV-${new Date()}`,
-          transactionType: this.getTransactionType(body.service),
-        });
+        receipt = await this.billPayments(
+          {
+            user: body.user,
+            service: body.service,
+            customerId: body.customerId!,
+            amount: body.amount.toString(),
+            paymentItem: body.paymentItem!,
+            division: body.division!,
+            productId: body.productId!,
+            billerId: body.billerId!,
+            reference: `MEV-${new Date().getTime()}`, // Use timestamp for uniqueness
+            transactionType: this.getTransactionType(body.service), // This actually generates an EntityType
+          },
+          session, // Pass session
+        );
       } else {
-        throw new Error('Invalid service type');
+        throw new BadRequestException('Invalid or unsupported service type.');
       }
 
+      // 4. Commit Transaction if all successful
+      await session.commitTransaction();
+      session.endSession();
       return receipt;
     } catch (error) {
+      // 5. Abort Transaction if any error occurs
+      await session.abortTransaction();
+      session.endSession();
+      // Re-throw the specific error type for better API responses
       throw error;
     }
   }
 
-  async billPayments(body: {
-    user: User;
-    service: ServiceTypeEnum;
-    transactionType: TransactionEntityTypeEnum;
-    customerId: string; // Phone Number or Meter Number
-    amount: string; // Bill cost
-    division: string; // from billerList.division
-    paymentItem: string; // from billerItems.paymentCode
-    productId: string; // from billerList.product
-    billerId: string; // from billerList.id
-    reference: string; // Unique, prefixed with walletName or name of choice
-    phoneNumber?: string; // Optional for some products (e.g., electricity)
-  }): Promise<Transaction> {
+  // Helper to deduct user balance within a session
+  // Helper to deduct user balance within a session
+  private async deductUserBalance(
+    user: UserDocument,
+    amount: number,
+    session: mongoose.ClientSession,
+  ): Promise<void> {
+    // Ensure wallet is populated
+    if (!user.wallet) {
+      // If AuthGuard doesn't populate, fetch it here within the session
+      // The 'as UserDocument' is to ensure TypeScript understands the re-assignment type
+      user = (await this.databaseService.users
+        .findById(user._id)
+        .populate('wallet')
+        .session(session)
+        .exec()) as UserDocument;
+      if (!user || !user.wallet) {
+        throw new NotFoundException('User wallet not found.');
+      }
+    }
+
+    if (user.wallet.balance < amount) {
+      throw new BadRequestException('Insufficient balance.');
+    }
+
+    user.wallet.balance -= amount;
+    // Save wallet changes within the current session
+    // FIX: Removed redundant cast for user.wallet as it should be WalletDocument after population
+    await user.wallet.save({ session });
+  }
+
+  async billPayments(
+    body: {
+      user: UserDocument;
+      service: ServiceTypeEnum;
+      transactionType: TransactionEntityTypeEnum; // This param seems to be for `entityType` in meta
+      customerId: string; // Phone Number or Meter Number
+      amount: string; // Bill cost
+      division: string; // from billerList.division
+      paymentItem: string; // from billerItems.paymentCode
+      productId: string; // from billerList.product
+      billerId: string; // from billerList.id
+      reference: string; // Unique, prefixed with walletName or name of choice
+      phoneNumber?: string; // Optional for some products (e.g., electricity)
+    },
+    session: mongoose.ClientSession, // Accept session
+  ): Promise<TransactionDocument> {
     try {
       const { user, service, transactionType, ...billData } = body;
 
-      const receipt = await this.generateTransactionReceipt({
-        user: body.user,
-        reference: billData.reference,
-        amount: parseInt(billData.amount),
-        entityId: billData.billerId,
-        entityType: transactionType,
-        entityNumber: billData.productId,
-        entityCode: billData.paymentItem,
-        entityName: billData.division,
-        service: service,
-      });
+      // Ensure transaction is created within the session
+      const receipt = await this.generateTransactionReceipt(
+        {
+          user: body.user,
+          reference: billData.reference,
+          amount: parseInt(billData.amount),
+          entityId: billData.billerId,
+          entityType: transactionType, // Use the provided transactionType here
+          entityNumber: billData.customerId, // Customer ID is more appropriate here
+          entityCode: billData.paymentItem, // Payment item code
+          entityName: billData.division, // Division/Category name
+          service: service,
+        },
+        session, // Pass session
+      );
 
+      // Perform external payment
       const { data } = await this.bankService.payBill(billData);
 
       if (!data) {
         receipt.status = TransactionStatusEnum.failed;
-        await receipt.save();
-        throw new NotFoundException('Error processing bill payment');
+        await receipt.save({ session }); // Save status update within session
+        throw new InternalServerErrorException(
+          'Error processing bill payment with external service.',
+        );
       }
 
       if (service === ServiceTypeEnum.electricity) {
@@ -245,24 +305,28 @@ export class UserTransferService {
       }
 
       receipt.status = TransactionStatusEnum.completed;
-      await receipt.save();
+      await receipt.save({ session }); // Save status update within session
 
       return receipt;
     } catch (error) {
-      throw error;
+      // If bill payment fails, the transaction is already aborted by processTransaction
+      throw error; // Re-throw for processTransaction to catch and abort
     }
   }
 
-  private async processFundsTransfer(body: {
-    user: User;
-    service: ServiceTypeEnum;
-    amount: string;
-    remark: string;
-    transferType: 'intra' | 'inter';
-    reference: string;
-    bankCode: string;
-    accountNumber: string;
-  }): Promise<Transaction> {
+  private async processFundsTransfer(
+    body: {
+      user: UserDocument; // UserDocument
+      service: ServiceTypeEnum;
+      amount: string;
+      remark: string;
+      transferType: 'intra' | 'inter';
+      reference: string;
+      bankCode: string;
+      accountNumber: string;
+    },
+    session: mongoose.ClientSession, // Accept session
+  ): Promise<TransactionDocument> {
     try {
       const recipientDetails = await this.confirmBankDetails({
         bank: body.bankCode,
@@ -274,7 +338,9 @@ export class UserTransferService {
       );
 
       if (!senderDetails) {
-        throw new UnauthorizedException('Sender account invalid');
+        throw new InternalServerErrorException(
+          'Sender account details could not be retrieved.',
+        );
       }
 
       const { signature } = this.createTransferSignatureWithReference({
@@ -282,24 +348,28 @@ export class UserTransferService {
         receiverAccount: body.accountNumber,
       });
 
-      const receipt = await this.generateTransactionReceipt({
-        user: body.user,
-        reference: body.reference,
-        amount: parseInt(body.amount),
-        entityId: recipientDetails.account.number,
-        entityType: TransactionEntityTypeEnum.user,
-        entityNumber: recipientDetails.account.number,
-        entityCode: body.bankCode,
-        entityName: recipientDetails.name,
-        service: body.service,
-      });
+      // Ensure transaction is created within the session
+      const receipt = await this.generateTransactionReceipt(
+        {
+          user: body.user,
+          reference: body.reference,
+          amount: parseInt(body.amount),
+          entityId: recipientDetails.account.number,
+          entityType: TransactionEntityTypeEnum.user, // Assuming recipient is always a user entity
+          entityNumber: recipientDetails.account.number,
+          entityCode: body.bankCode,
+          entityName: recipientDetails.name,
+          service: body.service,
+        },
+        session, // Pass session
+      );
 
       await this.bankService.transferFunds({
         fromAccount: body.user.bankDetails.accountNumber,
         fromClient: senderDetails.client,
         fromClientId: senderDetails.clientId,
         fromSavingsId: senderDetails.accountId,
-        fromBvn: body.user.bankDetails.bankCode,
+        fromBvn: body.user.bankDetails.bankCode, // Assuming bankCode is BVN for some reason, verify this
         toClient: recipientDetails.name,
         toBank: recipientDetails.bank,
         toAccount: recipientDetails.account.number,
@@ -319,25 +389,39 @@ export class UserTransferService {
       });
 
       receipt.status = TransactionStatusEnum.completed;
-      await receipt.save();
+      await receipt.save({ session }); // Save status update within session
 
       return receipt;
     } catch (error) {
-      throw error;
+      // If transfer fails, the transaction is already aborted by processTransaction
+      throw error; // Re-throw for processTransaction to catch and abort
     }
   }
 
   private getTransactionType(
     service: ServiceTypeEnum,
   ): TransactionEntityTypeEnum {
+    // This method seems to map ServiceTypeEnum to TransactionEntityTypeEnum.
+    // It's not about 'transactionType' in the `Transaction` schema (funding, transfer, etc.)
+    // but rather the type of entity involved in the transaction meta.
+    // If service is a transfer, it's an external entity. Otherwise, it corresponds to the service name.
     if (service === ServiceTypeEnum.transfer) {
       return TransactionEntityTypeEnum.external;
+    } else if (
+      Object.values(TransactionEntityTypeEnum).includes(service as any)
+    ) {
+      // Direct casting if service enum string matches entity type enum string
+      return service as unknown as TransactionEntityTypeEnum;
     } else {
-      return service.toString() as unknown as TransactionEntityTypeEnum;
+      // Default or error handling if no direct mapping exists
+      throw new InternalServerErrorException(
+        `No direct entity type mapping for service: ${service}`,
+      );
     }
   }
 
   private getTransferType(bankCode: string): 'intra' | 'inter' {
+    // This logic relies on '999999' being your internal bank code
     return bankCode === '999999' ? 'intra' : 'inter';
   }
 
@@ -347,47 +431,56 @@ export class UserTransferService {
   }): ITransferKey {
     const { senderAccount, receiverAccount } = body;
     const signature = sha512(`${senderAccount}${receiverAccount}`);
-
     const reference = `${Math.floor(Math.random() * 1000 + 1)}${Date.now()}`;
-
     return { signature, reference };
   }
 
-  private async generateTransactionReceipt(body: {
-    reference: string;
-    amount: number;
-    user: User;
-    entityId: string;
-    entityType: TransactionEntityTypeEnum;
-    entityCode: string;
-    entityNumber: string;
-    entityName: string;
-    service: ServiceTypeEnum;
-  }): Promise<TransactionDocument> {
+  private async generateTransactionReceipt(
+    body: {
+      reference: string;
+      amount: number;
+      user: UserDocument; // UserDocument
+      entityId: string;
+      entityType: TransactionEntityTypeEnum;
+      entityCode: string;
+      entityNumber: string;
+      entityName: string;
+      service: ServiceTypeEnum;
+    },
+    session: mongoose.ClientSession, // Accept session
+  ): Promise<TransactionDocument> {
     try {
-      const receipt = await this.databaseService.transactions.create({
-        amount: body.amount,
-        reference: body.reference,
-        service: body.service,
-        user: body.user._id,
-        meta: {
-          paidFrom: {
-            entityId: body.user._id.toString(),
-            entityType: TransactionEntityTypeEnum.user,
-            entityNumber: body.user.bankDetails.accountNumber,
-            entityCode: body.user.bankDetails.bankCode,
-            entityName: body.user.bankDetails.bankName,
-          },
-          paidTo: {
-            entityId: body.entityId,
-            entityType: body.entityType,
-            entityNumber: body.entityNumber,
-            entityCode: body.entityCode,
-            entityName: body.entityName,
+      const [receipt] = await this.databaseService.transactions.create(
+        {
+          amount: body.amount,
+          reference: body.reference,
+          service: body.service,
+          user: body.user._id,
+          // Default status to pending, will be updated to completed or failed later
+          status: TransactionStatusEnum.pending,
+          type:
+            body.service === ServiceTypeEnum.transfer
+              ? TransactionTypeEnum.transfer
+              : TransactionTypeEnum.funding, // Example: Adjust type based on service
+          meta: {
+            paidFrom: {
+              entityId: body.user._id.toString(),
+              entityType: TransactionEntityTypeEnum.user,
+              entityNumber: body.user.bankDetails.accountNumber,
+              entityCode: body.user.bankDetails.bankCode, // Assuming this is present
+              entityName: body.user.bankDetails.bankName, // Assuming this is present
+            },
+            paidTo: {
+              entityId: body.entityId,
+              entityType: body.entityType,
+              entityNumber: body.entityNumber,
+              entityCode: body.entityCode,
+              entityName: body.entityName,
+            },
           },
         },
-      });
-
+        { session }, // Pass session here
+      );
       return receipt;
     } catch (error) {
       throw error;

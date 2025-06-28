@@ -7,7 +7,7 @@ import {
   ICryptoDetails,
 } from '../../interfaces/user.interface';
 import { generateRandomDigits } from 'src/core/utils/random-generator.util';
-import { Wallet, WalletSchema } from './wallet.schema';
+import { Wallet, WalletDocument, WalletSchema } from './wallet.schema';
 import { UserMethods } from '../methods/user.methods';
 
 export type UserDocument = User & Document;
@@ -128,7 +128,7 @@ export class User implements UserMethods {
   activateUser: () => { walletId: string; code: string };
   createdAt: Date;
   updatedAt: Date;
-  wallet: Wallet;
+  wallet: WalletDocument | null;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
