@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from 'src/core/database/database.service';
 import { User, UserDocument } from 'src/core/database/schemas/user.schema';
+import { WalletDocument } from 'src/core/database/schemas/wallet.schema';
 
 @Injectable()
 export class UserProfileService {
@@ -29,7 +30,7 @@ export class UserProfileService {
     user: UserDocument;
   }): Promise<{ balance: number }> {
     try {
-      const balance = body.user.wallet.balance;
+      const balance = (body.user.wallet as WalletDocument).balance;
 
       return { balance };
     } catch (error) {
