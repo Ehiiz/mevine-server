@@ -491,7 +491,6 @@ export class VFDService {
    * Returns a list of biller categories.
    */
   async getBillerCategories(): Promise<BillerCategoryResponse> {
-    console.log('I got here');
     const urlPath = this.buildUrlPath(VFDUrls.BILLS_PAYMENT_BILLER_CATEGORY);
     this.logger.debug(
       `Fetching biller categories from bills payment API using path: ${urlPath}`,

@@ -50,7 +50,7 @@ import { ErrorResponseDto } from 'src/core/interfaces/shared.interface';
 @Controller('')
 @UseGuards(AuthGuard) // All routes in this controller require JWT authentication
 @ApiBearerAuth() // Indicates that these endpoints require a bearer token
-@ApiExtraModels(BankResponse)
+@ApiExtraModels(BankResponse, TransferRecipientResponse)
 export class UserTransferController {
   constructor(private readonly userTransferService: UserTransferService) {}
 
@@ -138,12 +138,16 @@ export class UserTransferController {
   })
   async confirmBankDetails(
     @Body() body: ConfirmBankDetailsDto,
-  ): Promise<{ message: string; data: TransferRecipientResponseData }> {
+  ): Promise<{ message: string; data: TransferRecipientResponse }> {
     try {
       const data = await this.userTransferService.confirmBankDetails(body);
       return {
         message: 'Bank details confirmed.',
-        data: data,
+        data: {
+          accountNumber: data.account.number,
+          name: data.name,
+          bank: data.bank,
+        },
       };
     } catch (error) {
       throw error;

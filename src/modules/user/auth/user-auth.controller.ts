@@ -237,6 +237,7 @@ export class UserAuthController {
             phoneNumber: updatedUser.phoneNumber,
             avatar: updatedUser.avatar,
             accountStatus: updatedUser.accountStatus,
+            wallet: updatedUser.wallet, // Include wallet if needed
           },
         },
       };

@@ -91,8 +91,8 @@ export class CompleteAccountDto {
   @ApiProperty({
     description: '4-digit transaction passcode (PIN)',
     example: '5678',
-    minLength: 4,
-    maxLength: 4,
+    minLength: 6,
+    maxLength: 6,
   })
   @IsString({ message: 'Passcode must be a string' })
   @IsNotEmpty({ message: 'Passcode is required' })

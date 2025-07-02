@@ -259,26 +259,14 @@ export class BankResponse implements Bank {
 }
 
 export class TransferRecipientResponse
-  implements TransferRecipientResponseData
+  implements Partial<TransferRecipientResponseData>
 {
   @ApiProperty({ type: 'string', example: 'JOHN DOE' })
   name: string;
-  @ApiProperty({ type: 'string', example: 'CLT12345' })
-  clientId: string;
-  @ApiProperty({ type: 'string', example: '221122334455', required: false })
-  bvn?: string;
-  @ApiProperty({
-    type: 'object',
-    properties: {
-      number: { type: 'string', example: '0012345678' },
-      id: { type: 'string', example: 'ACC98765' },
-    },
-  })
-  account: { number: string; id: string };
-  @ApiProperty({ type: 'string', example: 'active' })
-  status: string;
-  @ApiProperty({ type: 'string', example: 'NGN' })
-  currency: string;
+
+  @ApiProperty({ type: 'string', example: '0012345678' })
+  accountNumber: string;
+
   @ApiProperty({ type: 'string', example: 'VFD Bank' })
   bank: string;
 }

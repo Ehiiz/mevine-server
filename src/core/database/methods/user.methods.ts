@@ -1,3 +1,3 @@
 export interface UserMethods {
-  activateUser(): { walletId: string; code: string };
+  activateUser: () => Promise<{ walletId: string; code: string }>;
 }

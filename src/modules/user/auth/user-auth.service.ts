@@ -193,6 +193,8 @@ export class UserAuthService {
 
       await body.user.save();
 
+      await body.user.activateUser();
+
       // Generate token after successful save
       const token = this.jwtService.sign({ id: body.user.id });
 
@@ -221,7 +223,7 @@ export class UserAuthService {
 
       if (!user.accountStatus || user.accountStatus?.completeSetup !== true) {
         throw new NotFoundException(
-          'User has not completed account setup, Sign up ',
+          'User has not completed account setup, Return to sign up ',
         );
       }
 

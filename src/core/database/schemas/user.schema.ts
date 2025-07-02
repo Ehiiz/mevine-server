@@ -125,7 +125,7 @@ export class User implements UserMethods {
   })
   referralCode: string;
 
-  activateUser: () => { walletId: string; code: string };
+  activateUser: () => Promise<{ walletId: string; code: string }>;
   createdAt: Date;
   updatedAt: Date;
   wallet: WalletDocument | null;

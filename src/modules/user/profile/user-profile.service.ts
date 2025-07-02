@@ -15,11 +15,9 @@ export class UserProfileService {
   }): Promise<{ user: User }> {
     try {
       const { user: base, ...rest } = body;
-      const user = await this.databaseSerice.users.findByIdAndUpdate(
-        base._id,
-        rest,
-        { new: true },
-      );
+      const user = await this.databaseSerice.users
+        .findByIdAndUpdate(base._id, rest, { new: true })
+        .populate('wallet');
       return { user: user!.toJSON() as any };
     } catch (error) {
       throw error;

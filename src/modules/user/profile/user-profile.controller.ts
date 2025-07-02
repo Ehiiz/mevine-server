@@ -51,9 +51,7 @@ export class UserProfileController {
                 user: {
                   type: 'object',
                   description: 'The user object (without sensitive auth data)',
-                  // For Swagger, you might want a dedicated UserProfileResponseDto
-                  // that omits sensitive fields for clearer API docs.
-                  // For now, listing common properties.
+
                   properties: {
                     _id: {
                       type: 'string',

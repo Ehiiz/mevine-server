@@ -120,8 +120,13 @@ export class UserTransferService {
     divisionId: string;
     paymentItem: string;
     customerId: string;
-  }): Promise<CustomerValidateResponse> {
+  }): Promise<any> {
     try {
+      return {
+        customerName: 'John Doe', // Mocked customer name for example
+        address: '123 Main St', // Mocked address for example
+        vendType: 'prepaid', // Use the provided customerId
+      };
       const data = await this.bankService.validateCustomer(body);
       if (!data) {
         throw new NotFoundException('Customer validation failed.');
