@@ -133,7 +133,7 @@ export class User implements UserMethods {
 
 export const UserSchema = SchemaFactory.createForClass(User);
 
-// Virtual for 'wallet' remains the same
+// Virtual for 'wallet'
 UserSchema.virtual('wallet', {
   ref: 'Wallet',
   foreignField: 'entity',
@@ -141,35 +141,56 @@ UserSchema.virtual('wallet', {
   justOne: true,
 });
 
-// Method for 'activateUser' remains the same
-UserSchema.methods.activateUser = async function () {
-  const walletModel = mongoose.model(Wallet.name, WalletSchema);
+// Fixed activateUser method
+UserSchema.methods.activateUser = async function (): Promise<{
+  walletId: string;
+  code: string;
+}> {
+  try {
+    // Check if user already has a referral code
+    if (!this.referralCode) {
+      const code = generateRandomDigits();
+      this.referralCode = code;
+      // Save the user with the new referral code
+      await this.save();
+    }
 
-  const code = generateRandomDigits();
-  this.referralCode = code;
-  const wallet = await walletModel.create({
-    entity: this._id,
-    balance: 0,
-  });
+    // Use the connection from this document's model
+    const WalletModel = this.db.model('Wallet', WalletSchema);
 
-  return { walletId: wallet._id, code };
+    // Check if wallet already exists to prevent duplicates
+    const existingWallet = await WalletModel.findOne({ entity: this._id });
+
+    if (existingWallet) {
+      return {
+        walletId: existingWallet._id.toString(),
+        code: this.referralCode,
+      };
+    }
+
+    // Create new wallet
+    const wallet = await WalletModel.create({
+      entity: this._id,
+      balance: 0,
+    });
+
+    return {
+      walletId: wallet._id.toString(),
+      code: this.referralCode,
+    };
+  } catch (error) {
+    console.error('Error in activateUser method:', error);
+    throw new Error(`Failed to activate user: ${error.message}`);
+  }
 };
 
-// --- Add this toJSON configuration ---
+// toJSON configuration
 UserSchema.set('toJSON', {
-  virtuals: true, // Ensure virtuals are included (like 'id' from '_id')
+  virtuals: true,
   transform: (doc, ret) => {
-    // Convert _id to id string
     ret.id = ret._id.toHexString();
-    delete ret._id; // Remove _id
-
-    // Remove sensitive fields
-    delete ret.auth; // Remove the entire auth object
-    // You can also remove other sensitive fields if needed, e.g.:
-    // delete ret.fcmToken;
-    // delete ret.bankDetails; // If bank details are considered sensitive in the general profile view
-    // delete ret.cryptoAddresses; // If crypto addresses are sensitive
-
+    delete ret._id;
+    delete ret.auth; // Remove sensitive auth data
     return ret;
   },
 });
