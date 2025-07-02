@@ -276,6 +276,7 @@ export class UserAuthService {
 
       user.auth.loginTokenExpiration = null;
       user.auth.loginVerificationToken = null;
+      user.wallet = user.wallet || null; // Ensure wallet is not undefined
 
       await user.save();
 
