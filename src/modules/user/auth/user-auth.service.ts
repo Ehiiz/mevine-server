@@ -253,9 +253,11 @@ export class UserAuthService {
     email: string;
   }): Promise<{ token: string; user: User }> {
     try {
-      const user = await this.databaseService.users.findOne({
-        email: body.email,
-      });
+      const user = await this.databaseService.users
+        .findOne({
+          email: body.email,
+        })
+        .populate('wallet');
 
       if (!user) {
         throw new NotFoundException('User not found in database');
@@ -276,7 +278,6 @@ export class UserAuthService {
 
       user.auth.loginTokenExpiration = null;
       user.auth.loginVerificationToken = null;
-      user.wallet = user.wallet || null; // Ensure wallet is not undefined
 
       await user.save();
 

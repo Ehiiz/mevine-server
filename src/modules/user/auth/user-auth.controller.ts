@@ -355,7 +355,7 @@ export class UserAuthController {
       // Actual runtime response
       return {
         message: 'Login successful.',
-        data: { token, user },
+        data: { token, user: { ...user, wallet: user.wallet } },
       };
     } catch (error) {
       throw error;
