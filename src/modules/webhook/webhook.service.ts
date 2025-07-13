@@ -101,6 +101,8 @@ export class WebhookService {
           return { message: 'Withdrawal completed event processed.' };
 
         case 'wallet.address.generated':
+          this.logger.debug(webhookPayload);
+
           const addressData =
             webhookPayload.data as unknown as WalletGeneratedData;
           this.logger.log(
