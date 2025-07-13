@@ -11,6 +11,7 @@ import {
 import { WebhookService } from './webhook.service';
 import { QuidaxGuard } from 'src/core/guards/webhook.guard';
 import { Response } from 'express';
+import { SkipTransform } from 'src/core/interceptors/skip-transform.interceptor';
 
 @Controller('webhook')
 export class WebhookController {
@@ -18,23 +19,16 @@ export class WebhookController {
 
   @UseGuards(QuidaxGuard)
   @Post('quidax')
-  async quidaxWebhookEvent(
-    @Body() body: any,
-    @Res() res: Response,
-  ): Promise<void> {
+  @SkipTransform()
+  @HttpCode(HttpStatus.OK)
+  async quidaxWebhookEvent(@Body() body: any): Promise<void> {
     try {
       await this.webhookService.handleQuidaxWebhook(body);
-
-      res.status(HttpStatus.OK).json({
-        message: 'Webhook event received and processed successfully.',
-      });
+      // Function returns void, NestJS will send 200 OK with no body
     } catch (error) {
       console.error('Error handling Quidax webhook:', error);
-      // Send a 500 Internal Server Error response
-      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-        message: 'Failed to process webhook event.',
-        error: error.message || 'Unknown error', // Provide a more descriptive error message
-      });
+      // Let NestJS handle the error response
+      throw error;
     }
   }
 
