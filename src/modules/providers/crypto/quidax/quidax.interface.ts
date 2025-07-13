@@ -1,3 +1,5 @@
+import { N } from '@faker-js/faker/dist/airline-BUL6NtOJ';
+
 export interface QuidaxApiResponse<T> {
   code: number;
   message: string;
@@ -388,4 +390,27 @@ export interface SwapCompletedData {
   status: 'completed' | 'pending' | 'failed';
   user_id?: string; // The sub_account_id or user ID associated with the swap
   // Add other relevant fields
+}
+
+export interface WalletGeneratedData {
+  id: string;
+  reference?: string | null;
+  address: string;
+  currency: string;
+  network: string;
+  user: {
+    id: string;
+    sn: string;
+    email: string;
+    reference?: string | null;
+    first_name?: string | null;
+    last_name?: string | null;
+    created_at: string;
+    updated_at: string;
+    display_name?: any | null;
+  };
+  destination_tag: string;
+  total_paymnents: any | null;
+  created_at: string;
+  updated_at: string;
 }

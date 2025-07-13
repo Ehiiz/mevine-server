@@ -5,6 +5,7 @@ import {
   OrderFilledData,
   QuidaxWebhookEvent,
   SwapCompletedData,
+  WalletGeneratedData,
   WithdrawalCompletedData,
 } from '../providers/crypto/quidax/quidax.interface';
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
@@ -98,6 +99,15 @@ export class WebhookService {
             `Withdrawal ${withdrawalData.id} completed. Status: ${withdrawalData.status}, TxID: ${withdrawalData.txid}`,
           );
           return { message: 'Withdrawal completed event processed.' };
+
+        case 'withdrawal.address.generated':
+          const addressData =
+            webhookPayload.data as unknown as WalletGeneratedData;
+          this.logger.log(
+            `Handling withdrawal.address.generated event for ID: ${addressData.address}`,
+          );
+
+          return { message: 'Withdrawal address generated event processed.' };
 
         case 'order.filled':
           const orderData = webhookPayload.data as unknown as OrderFilledData;

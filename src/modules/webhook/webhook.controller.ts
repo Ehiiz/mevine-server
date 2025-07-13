@@ -1,6 +1,16 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { WebhookService } from './webhook.service';
 import { QuidaxGuard } from 'src/core/guards/webhook.guard';
+import { Response } from 'express';
 
 @Controller('webhook')
 export class WebhookController {
@@ -10,9 +20,20 @@ export class WebhookController {
   @Post('quidax')
   async quidaxWebhookEvent(
     @Body() body: any,
-    @Req() req: Request,
+    @Res() res: Response,
   ): Promise<void> {
-    const data = await this.webhookService.handleQuidaxWebhook(body);
+    try {
+      await this.webhookService.handleQuidaxWebhook(body);
+
+      res.status(HttpStatus.OK).json({
+        message: 'Webhook event received and processed successfully.',
+      });
+    } catch (error) {
+      console.error('Error handling Quidax webhook:', error);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        message: 'Failed to process webhook event.',
+      });
+    }
   }
 
   @Post('vfd')
