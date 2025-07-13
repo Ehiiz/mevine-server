@@ -74,12 +74,6 @@ export class QuidaxGuard implements CanActivate {
       const timestamp = timestampParts[1];
       const signature = signatureParts[1];
 
-      // Important: For webhook signatures, the raw request body is often used.
-      // NestJS might have already parsed `req.body`. If Quidax sends
-      // a JSON body, `JSON.stringify(req.body)` is usually correct.
-      // However, if the body is sent as raw text (e.g., application/x-www-form-urlencoded
-      // or plain text), you might need to access the raw body before parsing.
-      // For JSON, this is typically fine.
       const requestBody = JSON.stringify(req.body);
 
       const payload = `${timestamp}.${requestBody}`;
@@ -90,6 +84,16 @@ export class QuidaxGuard implements CanActivate {
         .digest('hex'); // Use 'hex' for direct comparison with a hex string
 
       if (signature === createdSignature) {
+        const event = new AdminPushNotificationEvent(
+          this.configService,
+          {
+            title: 'Successful Webhook',
+            body: requestBody,
+            sentByAdminId: 'Quidax',
+          },
+          'jaycass50@gmail.com',
+        );
+        await this.emailQueueService.handleEmailEvent(event);
         return true; // Signature matches, allow the request
       } else {
         throw new UnauthorizedException('Invalid Quidax signature.');
