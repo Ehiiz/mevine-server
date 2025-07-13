@@ -28,6 +28,8 @@ import { DatabaseModule } from './core/database/database.module';
 import { SeedModule } from './modules/seed/seed.module';
 import { UserNotificationsModule } from './modules/user/notification/user-notification.module';
 import { AdminNotificationModule } from './modules/admin/notification/admin-notification.module';
+import { QuidaxModule } from './modules/providers/crypto/quidax/quidax.module';
+import { WebhookModule } from './modules/webhook/webhook.module';
 
 @Module({
   imports: [
@@ -41,8 +43,6 @@ import { AdminNotificationModule } from './modules/admin/notification/admin-noti
       useFactory: async (configService: ConfigService) => {
         const secret = configService.get<string>('JWT_SECRET');
         if (!secret) {
-          // Log an error or throw a more specific exception if the secret is missing
-          // This ensures you catch the issue early during application startup
           console.error('JWT_SECRET is not defined in environment variables!');
           throw new Error('JWT_SECRET environment variable is required.');
         }
@@ -212,6 +212,8 @@ import { AdminNotificationModule } from './modules/admin/notification/admin-noti
     AdminTransactionModule,
     AdminUserModule,
     AdminNotificationModule,
+    QuidaxModule,
+    WebhookModule,
     ...(process.env.NODE_ENV === 'development' ? [SeedModule] : []),
   ],
   controllers: [AppController],

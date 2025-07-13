@@ -40,6 +40,8 @@ export default tseslint.config(
       '@typescript-eslint/no-redundant-type-constituents': 'off',
       '@typescript-eslint/no-empty-object-type': 'off',
       '@typescript-eslint/restrict-template-expressions': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      'no-case-declarations': 'off',
     },
   },
 );
