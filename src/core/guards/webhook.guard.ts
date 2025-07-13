@@ -28,15 +28,11 @@ export class QuidaxGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     try {
-      const event = new AdminPushNotificationEvent(
-        this.configService,
-        {
-          title: 'Quidax Webhook',
-          body: 'Recieved webhook',
-          sentByAdminId: 'Quidax',
-        },
-        'jaycass50@gmail.com',
-      );
+      const event = new AdminPushNotificationEvent(this.configService, {
+        title: 'Quidax Webhook',
+        body: 'Recieved webhook',
+        sentByAdminId: 'Quidax',
+      });
       await this.emailQueueService.handleEmailEvent(event);
       const req: Request = context.switchToHttp().getRequest();
 
@@ -73,15 +69,11 @@ export class QuidaxGuard implements CanActivate {
         .digest('hex'); // Use 'hex' for direct comparison with a hex string
 
       if (signature === createdSignature) {
-        const event = new AdminPushNotificationEvent(
-          this.configService,
-          {
-            title: 'Successful Webhook',
-            body: requestBody,
-            sentByAdminId: 'Quidax',
-          },
-          'jaycass50@gmail.com',
-        );
+        const event = new AdminPushNotificationEvent(this.configService, {
+          title: 'Successful Webhook',
+          body: requestBody,
+          sentByAdminId: 'Quidax',
+        });
         await this.emailQueueService.handleEmailEvent(event);
         return true; // Signature matches, allow the request
       } else {
