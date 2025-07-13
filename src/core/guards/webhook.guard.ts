@@ -60,17 +60,6 @@ export class QuidaxGuard implements CanActivate {
       const timestampParts = timestampSection.split('=');
       const signatureParts = signatureSection.split('=');
 
-      if (
-        timestampParts.length !== 2 ||
-        timestampParts[0] !== 't' ||
-        signatureParts.length !== 2 ||
-        signatureParts[0] !== 'v'
-      ) {
-        throw new UnauthorizedException(
-          'Invalid Quidax signature header format.',
-        );
-      }
-
       const timestamp = timestampParts[1];
       const signature = signatureParts[1];
 
