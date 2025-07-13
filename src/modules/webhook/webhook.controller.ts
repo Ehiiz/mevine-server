@@ -30,6 +30,11 @@ export class WebhookController {
       });
     } catch (error) {
       console.error('Error handling Quidax webhook:', error);
+      // Send a 500 Internal Server Error response
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        message: 'Failed to process webhook event.',
+        error: error.message || 'Unknown error', // Provide a more descriptive error message
+      });
     }
   }
 
