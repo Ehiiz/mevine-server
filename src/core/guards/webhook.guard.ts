@@ -7,12 +7,17 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 import * as crypto from 'crypto'; // Import the crypto module
+import { EmailQueueService } from '../integrations/emails/email-queue.service';
+import { AdminPushNotificationEvent } from '../integrations/emails/email.utils';
 
 @Injectable()
 export class QuidaxGuard implements CanActivate {
   private readonly quidaxWebhookKey: string;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly emailQueueService: EmailQueueService,
+  ) {
     // It's better to get the key in the constructor if it's static
     const key = this.configService.get<string>('QUIDAX_WEBHOOK_KEY');
     if (!key) {
@@ -23,6 +28,16 @@ export class QuidaxGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     try {
+      const event = new AdminPushNotificationEvent(
+        this.configService,
+        {
+          title: 'Quidax Webhook',
+          body: 'Recieved webhook',
+          sentByAdminId: 'Quidax',
+        },
+        'jaycass50@gmail.com',
+      );
+      await this.emailQueueService.handleEmailEvent(event);
       const req: Request = context.switchToHttp().getRequest();
 
       const quidaxSignatureHeader = req.headers['quidax-signature'];
