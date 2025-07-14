@@ -3,9 +3,11 @@ import { BullModule } from '@nestjs/bullmq';
 import { QuidaxProducerService } from './quidax-producer.service';
 import { QuidaxConsumerService } from './quidax-consumer.service';
 import { QuidaxModule } from '../quidax.module';
+import { VFDQueueModule } from 'src/modules/providers/bank/vfd/processor/vfd-queue.module';
 
 @Module({
   imports: [
+    VFDQueueModule,
     QuidaxModule,
     BullModule.registerQueue({
       name: 'quidax-process', // Name of your queue for product stats

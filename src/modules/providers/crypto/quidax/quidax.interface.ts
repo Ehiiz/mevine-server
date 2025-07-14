@@ -399,29 +399,172 @@ export interface QuidaxWebhookEvent<T> {
   data: T;
   // Add other common webhook fields like `timestamp`, `signature` if Quidax provides them
 }
+/**
+ * Interface for the 'user' object nested within various webhook data payloads.
+ * This is a common structure for user details.
+ */
+export interface WebhookUser {
+  id?: string;
+  sn?: string;
+  email?: string;
+  reference?: string | null;
+  first_name?: string;
+  last_name?: string;
+  display_name?: string | null;
+  created_at?: string; // ISO 8601 date string
+  updated_at?: string; // ISO 8601 date string
+}
 
+/**
+ * Interface for the 'networks' array within the deposit wallet.
+ */
+export interface DepositWalletNetwork {
+  id?: string;
+  name?: string;
+  deposits_enabled?: boolean;
+  withdraws_enabled?: boolean;
+}
+
+/**
+ * Interface for the 'wallet' object nested within the DepositSuccessfulData.
+ */
+export interface DepositWallet {
+  id?: string;
+  name?: string;
+  currency?: string;
+  balance?: string;
+  locked?: string;
+  staked?: string;
+  user?: WebhookUser; // Nested user object
+  converted_balance?: string;
+  reference_currency?: string;
+  is_crypto?: boolean;
+  created_at?: string; // ISO 8601 date string
+  updated_at?: string; // ISO 8601 date string
+  blockchain_enabled?: boolean;
+  default_network?: string;
+  networks?: DepositWalletNetwork[];
+  deposit_address?: string;
+  destination_tag?: string | null;
+}
+
+/**
+ * Interface for the 'payment_transaction' object within the DepositSuccessfulData.
+ */
+export interface PaymentTransaction {
+  status?: string; // e.g., "confirmed"
+  confirmations?: number;
+  required_confirmations?: number;
+}
+
+/**
+ * Interface for the 'payment_address' object within the DepositSuccessfulData.
+ */
+export interface DepositPaymentAddress {
+  id?: string;
+  reference?: string | null;
+  currency?: string;
+  address?: string;
+  network?: string;
+  user?: WebhookUser; // Nested user object
+  destination_tag?: string | null;
+  total_payments?: number | null;
+  created_at?: string; // ISO 8601 date string
+  updated_at?: string; // ISO 8601 date string
+}
+
+/**
+ * Interface for the 'data' payload of a 'deposit.successful' webhook event.
+ * All properties are optional.
+ */
 export interface DepositCompletedData {
-  id: string;
+  id?: string;
+  reference?: string | null;
+  type?: string; // e.g., "coin_address"
   currency: string;
-  amount: string;
-  status: 'completed' | 'pending' | 'failed';
-  user_id?: string; // The sub_account_id or user ID associated with the deposit
+  amount: string; // Amount of the deposit
+  fee?: string; // Fee for the deposit (often 0 for deposits)
   txid?: string; // Transaction ID on the blockchain
-  address?: string; // Deposit address
-  // Add other relevant fields from the actual Quidax deposit webhook payload
+  status?: string; // e.g., "accepted"
+  reason?: string | null;
+  created_at?: string; // ISO 8601 date string
+  done_at?: string | null; // ISO 8601 date string or null
+
+  wallet?: DepositWallet;
+  user: WebhookUser; // Top-level user object
+  payment_transaction?: PaymentTransaction;
+  payment_address?: DepositPaymentAddress;
+}
+/**
+ * Interface for the 'recipient' object within the WithdrawalCompletedData.
+ */
+export interface WithdrawalRecipient {
+  type?: string; // e.g., "coin_address"
+  details?: {
+    address?: string;
+    destination_tag?: string | null;
+    name?: string | null;
+  };
 }
 
+/**
+ * Interface for the 'wallet' object within the WithdrawalCompletedData.
+ */
+export interface WithdrawalWallet {
+  id?: string;
+  currency?: string;
+  balance?: string; // Assuming balance can be a string
+  locked?: string;
+  staked?: string;
+  converted_balance?: string;
+  reference_currency?: string;
+  is_crypto?: boolean;
+  created_at?: string; // ISO 8601 date string
+  updated_at?: string; // ISO 8601 date string
+  deposit_address?: string;
+  destination_tag?: string | null;
+}
+
+/**
+ * Interface for the 'user' object within the WithdrawalCompletedData.
+ * This might be similar to WalletGeneratedUser, but defined here for context.
+ */
+export interface WithdrawalUser {
+  id?: string;
+  sn?: string;
+  email?: string;
+  reference?: string | null;
+  first_name?: string;
+  last_name?: string;
+  display_name?: string | null;
+  created_at?: string; // ISO 8601 date string
+  updated_at?: string; // ISO 8601 date string
+}
+
+/**
+ * Interface for the 'data' payload of a 'withdrawal.completed' webhook event.
+ * All properties are optional.
+ */
 export interface WithdrawalCompletedData {
-  id: string;
-  currency: string;
-  amount: string;
-  status: 'completed' | 'pending' | 'failed';
-  user_id?: string; // The sub_account_id or user ID associated with the withdrawal
-  address: string; // Destination address of the withdrawal
+  id?: string;
+  reference?: string | null;
+  type?: string; // e.g., "coin_address"
+  currency?: string;
+  amount?: string; // Amount of the withdrawal
+  fee?: string; // Fee for the withdrawal
+  total?: string; // Total amount (amount + fee)
   txid?: string; // Transaction ID on the blockchain
-  // Add other relevant fields from the actual Quidax withdrawal webhook payload
-}
+  transaction_note?: string;
+  narration?: string;
+  status?: 'Done' | 'pending' | 'failed' | string; // Use string for broader compatibility if other statuses exist
+  reason?: string | null;
+  created_at?: string; // ISO 8601 date string
+  done_at?: string | null; // ISO 8601 date string or null
 
+  recipient?: WithdrawalRecipient;
+  wallet?: WithdrawalWallet;
+  user?: WithdrawalUser;
+}
 export interface OrderFilledData {
   id: string;
   market_id: string;

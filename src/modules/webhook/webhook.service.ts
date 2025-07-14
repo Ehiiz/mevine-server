@@ -10,14 +10,16 @@ import {
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { VfdWebhookPayload } from './webhook.interface';
 import { DatabaseService } from 'src/core/database/database.service';
-import { BlockchainEnum } from 'src/core/interfaces/user.interface';
-import { FcmQueueService } from 'src/core/integrations/fcm/fcm-queue.service';
 import {
+  CreateUserCreditQuidaxEvent,
   CreateWithdrawalQuidaxEvent,
   UpdateUserWalletQuidaxEvent,
 } from '../providers/crypto/quidax/processor/quidax.utils';
 import { QuidaxProducerService } from '../providers/crypto/quidax/processor/quidax-producer.service';
-import { th } from '@faker-js/faker/.';
+import { FcmProducerService } from 'src/core/integrations/fcm/fcm-producer.service';
+import { UserTransactionInfoFcmEvent } from 'src/core/integrations/fcm/fcm.utils';
+import { parse } from 'path';
+import { TransactionStatusEnum } from 'src/core/interfaces/transaction.interface';
 
 @Injectable()
 export class WebhookService {
@@ -25,7 +27,7 @@ export class WebhookService {
   constructor(
     private readonly quidaxProducerService: QuidaxProducerService,
     private readonly databaseService: DatabaseService,
-    private readonly fcmQueueService: FcmQueueService,
+    private readonly fcmProducerService: FcmProducerService,
   ) {}
 
   async handleQuidaxWebhook(webhookPayload: QuidaxWebhookEvent<any>) {
@@ -49,6 +51,14 @@ export class WebhookService {
         case 'withdrawal.completed':
           const withdrawalData =
             webhookPayload.data as unknown as WithdrawalCompletedData;
+
+          const withdrwalCompleteEvent = new CreateUserCreditQuidaxEvent(
+            withdrawalData,
+            withdrawalData!.user!.email!,
+          );
+          await this.quidaxProducerService.addQuidaxApiOperation(
+            withdrwalCompleteEvent,
+          );
 
           this.logger.log(
             `Handling withdrawal.completed event for ID: ${withdrawalData.id}`,
@@ -110,6 +120,21 @@ export class WebhookService {
       if (!user) {
         this.logger.error(`User not found`);
       }
+
+      await this.databaseService.transactions.findOneAndUpdate(
+        {
+          reference: payload.reference,
+        },
+        { status: TransactionStatusEnum.completed },
+      );
+
+      const event = new UserTransactionInfoFcmEvent(user!.fcmToken, {
+        id: payload.reference,
+        amount: parseInt(payload.amount),
+        status: 'completed',
+      });
+
+      await this.fcmProducerService.handleFcmEvent(event);
 
       this.logger.log(
         `Webhook of type '${type}' saved to Firestore successfully.`,

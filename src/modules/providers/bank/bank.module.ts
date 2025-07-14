@@ -5,6 +5,6 @@ import { VFDHttpServiceFactory, VFDService } from './vfd/vfd.service';
 @Module({
   imports: [VFDModule],
   providers: [VFDService, VFDHttpServiceFactory],
-  exports: [VFDService],
+  exports: [VFDService, VFDHttpServiceFactory],
 })
 export class BankModule {}

@@ -3,22 +3,22 @@ export class QuidaxQueueProcessorService {}
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
 import { Queue } from 'bullmq';
-import { BaseQuidaxEvent } from './quidax.utils';
+import { BaseVFDEvent } from './vfd.utils';
 
 @Injectable()
-export class QuidaxProducerService {
-  private readonly logger = new Logger(QuidaxProducerService.name);
-  constructor(@InjectQueue('quidax-process') private quidaxQueue: Queue) {}
+export class VfdProducerService {
+  private readonly logger = new Logger(VfdProducerService.name);
+  constructor(@InjectQueue('vfd-process') private vfdQueue: Queue) {}
 
   /**
    * Adds a job to update product sales statistics after an order is created.
    * @param event The OrderCreatedEvent containing order details.
    */
-  async addQuidaxApiOperation(event: BaseQuidaxEvent): Promise<void> {
+  async addVfdApiOperation(event: BaseVFDEvent): Promise<void> {
     try {
       const { requestName, ...data } = event;
 
-      await this.quidaxQueue.add(event.requestName, data, {
+      await this.vfdQueue.add(event.requestName, data, {
         attempts: 3, // Retry up to 3 times if job fails
         backoff: {
           type: 'exponential',
@@ -29,7 +29,9 @@ export class QuidaxProducerService {
       });
       this.logger.log(`Added ${event.requestName} job for Order ID`);
     } catch (error) {
-      this.logger.error(`Failed to add ${event.email} job : ${error.message}`);
+      this.logger.error(
+        `Failed to add ${event.requestName} job : ${error.message}`,
+      );
     }
   }
 }

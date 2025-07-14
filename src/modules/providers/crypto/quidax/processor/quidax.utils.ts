@@ -2,12 +2,14 @@ import {
   CreateSubAccountPayload,
   DepositCompletedData,
   WalletGeneratedData,
+  WithdrawalCompletedData,
 } from '../quidax.interface';
 
 export enum QuidaxEventsEnum {
   CREATE_SUB_ACCOUNT = 'create.sub.account',
   INITIATE_TRANSFER = 'initiate.transfer',
   UPDATE_USER_WALLET = 'update.wallet',
+  DEPOSIT_COMPLETED = 'deposit.completed',
 }
 
 export abstract class BaseQuidaxEvent {
@@ -38,6 +40,14 @@ export class UpdateUserWalletQuidaxEvent extends BaseQuidaxEvent {
 export class CreateWithdrawalQuidaxEvent extends BaseQuidaxEvent {
   public readonly data: DepositCompletedData;
   constructor(data: DepositCompletedData, email: string) {
+    super(QuidaxEventsEnum.DEPOSIT_COMPLETED, email);
+    this.data = data;
+  }
+}
+
+export class CreateUserCreditQuidaxEvent extends BaseQuidaxEvent {
+  public readonly data: WithdrawalCompletedData;
+  constructor(data: WithdrawalCompletedData, email: string) {
     super(QuidaxEventsEnum.INITIATE_TRANSFER, email);
     this.data = data;
   }

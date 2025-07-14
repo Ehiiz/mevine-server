@@ -31,6 +31,7 @@ import { AdminNotificationModule } from './modules/admin/notification/admin-noti
 import { QuidaxModule } from './modules/providers/crypto/quidax/quidax.module';
 import { WebhookModule } from './modules/webhook/webhook.module';
 import { QuidaxQueueModule } from './modules/providers/crypto/quidax/processor/quidax-queue.module';
+import { VFDQueueModule } from './modules/providers/bank/vfd/processor/vfd-queue.module';
 
 @Module({
   imports: [
@@ -204,6 +205,7 @@ import { QuidaxQueueModule } from './modules/providers/crypto/quidax/processor/q
     FcmModule,
     VFDModule,
     BankModule,
+    VFDQueueModule,
     UserAuthModule,
     UserProfileModule,
     UserTransactionModule,

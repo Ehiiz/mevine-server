@@ -348,14 +348,16 @@ export class UserTransferService {
 
       // 4. Commit Transaction if all successful
       await session.commitTransaction();
-      session.endSession();
+
       return receipt;
     } catch (error) {
       // 5. Abort Transaction if any error occurs
       await session.abortTransaction();
-      session.endSession();
+
       // Re-throw the specific error type for better API responses
       throw error;
+    } finally {
+      await session.endSession();
     }
   }
 

@@ -5,7 +5,7 @@ import { FcmService } from './fcm.service';
 import { BaseFcmEvent } from './fcm.utils';
 
 @Processor('fcm') // Listens to the 'fcm' queue
-export class FcmProcessor extends WorkerHost {
+export class FcmConsumerService extends WorkerHost {
   constructor(private readonly fcmService: FcmService) {
     super();
   }

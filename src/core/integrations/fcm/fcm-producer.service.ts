@@ -4,7 +4,7 @@ import { Queue } from 'bullmq';
 import { BaseFcmEvent } from './fcm.utils';
 
 @Injectable()
-export class FcmQueueService {
+export class FcmProducerService {
   constructor(@InjectQueue('fcm') private readonly fcmQueue: Queue) {}
 
   public async handleFcmEvent(event: BaseFcmEvent) {

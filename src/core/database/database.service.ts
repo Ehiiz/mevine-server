@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
+import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { User } from './schemas/user.schema';
-import { Model } from 'mongoose';
+import mongoose, { Model } from 'mongoose';
 import { Wallet } from './schemas/wallet.schema';
 import { Transaction } from './schemas/transaction.schema';
 import { Admin } from './schemas/admin.schema';
@@ -16,6 +16,9 @@ import { UserNotification } from './schemas/user-notification.schema';
 @Injectable()
 export class DatabaseService {
   constructor(
+    // Inject the Mongoose Connection here
+    @InjectConnection() private readonly connection: mongoose.Connection,
+
     @InjectModel(User.name) private readonly userModel: Model<User>,
     @InjectModel(Wallet.name) private readonly walletModel: Model<Wallet>,
     @InjectModel(Notification.name)
@@ -30,7 +33,10 @@ export class DatabaseService {
     @InjectModel(UserNotification.name)
     private readonly userNotificationModel: Model<UserNotification>,
   ) {}
-
+  // Add a getter for the connection
+  get connectionInstance(): mongoose.Connection {
+    return this.connection;
+  }
   get users(): Model<User> {
     return this.userModel;
   }
