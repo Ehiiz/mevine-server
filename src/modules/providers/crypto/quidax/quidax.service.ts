@@ -1,5 +1,4 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { AxiosResponse } from 'axios';
 import { Observable, firstValueFrom } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
@@ -11,7 +10,6 @@ import {
   CreateWithdrawalPayload,
   CreateInstantSwapPayload,
   TemporarySwapQuotationPayload,
-  CreateOrderPayload,
   CreateBeneficiaryAccountPayload,
   EditBeneficiaryAccountPayload,
 
@@ -29,7 +27,6 @@ import {
   Trade,
   Deposit,
   SwapTransaction,
-  Order,
   Beneficiary,
   CryptoWithdrawalFees,
   QuidaxApiResponse,
