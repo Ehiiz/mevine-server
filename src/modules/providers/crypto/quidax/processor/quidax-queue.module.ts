@@ -1,4 +1,3 @@
-// src/stats/product-stats-queue.module.ts
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { QuidaxProducerService } from './quidax-producer.service';
