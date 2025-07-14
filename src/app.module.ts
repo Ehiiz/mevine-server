@@ -30,6 +30,7 @@ import { UserNotificationsModule } from './modules/user/notification/user-notifi
 import { AdminNotificationModule } from './modules/admin/notification/admin-notification.module';
 import { QuidaxModule } from './modules/providers/crypto/quidax/quidax.module';
 import { WebhookModule } from './modules/webhook/webhook.module';
+import { QuidaxQueueModule } from './modules/providers/crypto/quidax/processor/quidax-queue.module';
 
 @Module({
   imports: [
@@ -214,6 +215,7 @@ import { WebhookModule } from './modules/webhook/webhook.module';
     AdminNotificationModule,
     QuidaxModule,
     WebhookModule,
+    QuidaxQueueModule,
     ...(process.env.NODE_ENV === 'development' ? [SeedModule] : []),
   ],
   controllers: [AppController],

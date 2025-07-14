@@ -14,12 +14,7 @@ import {
   CreateOrderPayload,
   CreateBeneficiaryAccountPayload,
   EditBeneficiaryAccountPayload,
-  CreateInstantOrderBuyCryptoFromFiatPayload,
-  CreateInstantOrderSellCryptoToFiatPayload,
-  CreateInstantOrderBuyCryptoWithVolumePayload,
-  InitiateOnRampTransactionPayload,
-  InitiateOffRampTransactionPayload,
-  BankAccountOffRampPayload,
+
   // Import other response interfaces if you need them for return types
   SubAccount,
   Wallet,
@@ -37,13 +32,8 @@ import {
   Order,
   Beneficiary,
   CryptoWithdrawalFees,
-  InstantOrder,
-  PaymentMethod,
-  PurchaseLimit,
-  PurchaseQuote,
-  RampTransaction,
-  BankAccount,
   QuidaxApiResponse,
+  TemporarySwapQuotationResponse,
 } from './quidax.interface'; // Import the new interfaces
 import { HttpService } from '@nestjs/axios';
 
@@ -114,7 +104,7 @@ export class QuidaxService {
     payload: CreateSubAccountPayload,
   ): Promise<SubAccount> {
     this.logger.log('Creating sub-account...');
-    return this.makeRequest<SubAccount>('post', '/users/sub_accounts', payload);
+    return this.makeRequest<SubAccount>('post', '/users', payload);
   }
 
   /**
@@ -129,7 +119,7 @@ export class QuidaxService {
     this.logger.log(`Editing sub-account ${subAccountId} details...`);
     return this.makeRequest<SubAccount>(
       'put',
-      `/users/sub_accounts/${subAccountId}`,
+      `/users/${subAccountId}`,
       payload,
     );
   }
@@ -139,7 +129,7 @@ export class QuidaxService {
    */
   async fetchAllSubAccounts(): Promise<SubAccount[]> {
     this.logger.log('Fetching all sub-accounts...');
-    return this.makeRequest<SubAccount[]>('get', '/users/sub_accounts');
+    return this.makeRequest<SubAccount[]>('get', '/users');
   }
 
   /**
@@ -148,10 +138,7 @@ export class QuidaxService {
    */
   async fetchDetailsOfSubAccount(subAccountId: string): Promise<SubAccount> {
     this.logger.log(`Fetching details of sub-account ${subAccountId}...`);
-    return this.makeRequest<SubAccount>(
-      'get',
-      `/users/sub_accounts/${subAccountId}`,
-    );
+    return this.makeRequest<SubAccount>('get', `/users/${subAccountId}`);
   }
 
   /**
@@ -160,7 +147,7 @@ export class QuidaxService {
   async fetchParentAccount(): Promise<any> {
     // Assuming no specific interface for parent account yet
     this.logger.log('Fetching parent account details...');
-    return this.makeRequest('get', '/users/master_account');
+    return this.makeRequest('get', '/users/me');
   }
 
   // --- Wallets API ---
@@ -179,11 +166,11 @@ export class QuidaxService {
    * @param userId The ID of the user.
    * @param walletId The ID of the wallet.
    */
-  async fetchUserWallet(userId: string, walletId: string): Promise<Wallet> {
-    this.logger.log(`Fetching wallet ${walletId} for user ${userId}...`);
+  async fetchUserWallet(userId: string, currency: string): Promise<Wallet> {
+    this.logger.log(`Fetching wallet ${currency} for user ${userId}...`);
     return this.makeRequest<Wallet>(
       'get',
-      `/users/${userId}/wallets/${walletId}`,
+      `/users/${userId}/wallets/${currency}`,
     );
   }
 
@@ -191,20 +178,44 @@ export class QuidaxService {
    * Fetches a payment address by its ID.
    * @param addressId The ID of the payment address.
    */
-  async fetchPaymentAddressById(addressId: string): Promise<PaymentAddress> {
+  async fetchPaymentAddressById(
+    addressId: string,
+    userId: string,
+    currency: string,
+  ): Promise<PaymentAddress> {
     this.logger.log(`Fetching payment address by ID ${addressId}...`);
     return this.makeRequest<PaymentAddress>(
       'get',
-      `/wallets/addresses/${addressId}`,
+      `/users/${userId}/wallets/${currency}/addresses/${addressId}`,
+    );
+  }
+
+  /**
+   * Fetches a payment address.
+   */
+  async fetchAPaymentAddresses(
+    userId: string,
+    currency: string,
+  ): Promise<PaymentAddress> {
+    this.logger.log('Fetching a payment addresses...');
+    return this.makeRequest<PaymentAddress>(
+      'get',
+      `/users/${userId}/wallets/${currency}/address`,
     );
   }
 
   /**
    * Fetches all payment addresses.
    */
-  async fetchPaymentAddresses(): Promise<PaymentAddress[]> {
+  async fetchPaymentAddresses(
+    userId: string,
+    currency: string,
+  ): Promise<PaymentAddress[]> {
     this.logger.log('Fetching all payment addresses...');
-    return this.makeRequest<PaymentAddress[]>('get', '/wallets/addresses');
+    return this.makeRequest<PaymentAddress[]>(
+      'get',
+      `/users/${userId}/wallets/${currency}/addresses`,
+    );
   }
 
   /**
@@ -212,12 +223,14 @@ export class QuidaxService {
    * @param payload The payment address creation data (e.g., currency, sub_account_id).
    */
   async createPaymentAddressForCryptocurrency(
+    userId: string,
+    currency: string,
     payload: CreatePaymentAddressPayload,
   ): Promise<PaymentAddress> {
     this.logger.log('Creating payment address for cryptocurrency...');
     return this.makeRequest<PaymentAddress>(
       'post',
-      '/wallets/addresses',
+      `/users/${userId}/wallets/${currency}/addresses`,
       payload,
     );
   }
@@ -231,7 +244,11 @@ export class QuidaxService {
   ): Promise<any> {
     // Return type might be specific
     this.logger.log('Re-enqueuing generated wallet address...');
-    return this.makeRequest('post', '/wallets/addresses/re_enque', payload);
+    return this.makeRequest(
+      'post',
+      '/users/me/wallets/addresses/re_enque',
+      payload,
+    );
   }
 
   // --- Validate Address API ---
@@ -246,10 +263,7 @@ export class QuidaxService {
     this.logger.log(
       `Validating address ${address} for currency ${currency}...`,
     );
-    return this.makeRequest(
-      'get',
-      `/wallets/addresses/validate?currency=${currency}&address=${address}`,
-    );
+    return this.makeRequest('get', `/${currency}/${address}/validate_address`);
   }
 
   // --- Withdrawals API ---
@@ -257,9 +271,16 @@ export class QuidaxService {
   /**
    * Fetches all withdrawal details.
    */
-  async fetchAllWithdrawals(): Promise<Withdrawal[]> {
+  async fetchAllWithdrawals(
+    userId: string,
+    currency: string,
+    state: string,
+  ): Promise<Withdrawal[]> {
     this.logger.log('Fetching all withdrawals...');
-    return this.makeRequest<Withdrawal[]>('get', '/withdrawals');
+    return this.makeRequest<Withdrawal[]>(
+      'get',
+      `/users/${userId}/withdraws?currency=${currency}&state=${state}`,
+    );
   }
 
   /**
@@ -269,16 +290,25 @@ export class QuidaxService {
   async cancelWithdrawal(withdrawalId: string): Promise<any> {
     // Return type might be specific (e.g., { success: boolean })
     this.logger.log(`Cancelling withdrawal ${withdrawalId}...`);
-    return this.makeRequest('post', `/withdrawals/${withdrawalId}/cancel`);
+    return this.makeRequest(
+      'post',
+      `/users/me/withdraws/${withdrawalId}/cancel`,
+    );
   }
 
   /**
    * Fetches details of a specific withdrawal.
    * @param withdrawalId The ID of the withdrawal to fetch.
    */
-  async fetchAWithdrawalDetail(withdrawalId: string): Promise<Withdrawal> {
+  async fetchAWithdrawalDetail(
+    withdrawalId: string,
+    userId: string,
+  ): Promise<Withdrawal> {
     this.logger.log(`Fetching detail of withdrawal ${withdrawalId}...`);
-    return this.makeRequest<Withdrawal>('get', `/withdrawals/${withdrawalId}`);
+    return this.makeRequest<Withdrawal>(
+      'get',
+      `/users/${userId}/withdraws/${withdrawalId}`,
+    );
   }
 
   /**
@@ -286,21 +316,29 @@ export class QuidaxService {
    * @param payload The withdrawal creation data.
    */
   async createWithdrawal(
+    userId: string,
     payload: CreateWithdrawalPayload,
   ): Promise<Withdrawal> {
     this.logger.log('Creating withdrawal...');
-    return this.makeRequest<Withdrawal>('post', '/withdrawals', payload);
+    return this.makeRequest<Withdrawal>(
+      'post',
+      `/users/${userId}/withdraws`,
+      payload,
+    );
   }
 
   /**
    * Fetches a withdrawal by its reference.
    * @param reference The reference of the withdrawal to fetch.
    */
-  async fetchWithdrawByReference(reference: string): Promise<Withdrawal> {
+  async fetchWithdrawByReference(
+    reference: string,
+    userId: string,
+  ): Promise<Withdrawal> {
     this.logger.log(`Fetching withdrawal by reference ${reference}...`);
     return this.makeRequest<Withdrawal>(
       'get',
-      `/withdrawals/reference/${reference}`,
+      `/users/${userId}/withdraws/reference/${reference}`,
     );
   }
 
@@ -326,9 +364,12 @@ export class QuidaxService {
    * Fetches a specific market ticker.
    * @param marketId The ID of the market (e.g., 'btc-ngn').
    */
-  async fetchAMarketTicker(marketId: string): Promise<MarketTicker> {
-    this.logger.log(`Fetching market ticker for ${marketId}...`);
-    return this.makeRequest<MarketTicker>('get', `/markets/${marketId}/ticker`);
+  async fetchAMarketTicker(currency: string): Promise<MarketTicker> {
+    this.logger.log(`Fetching market ticker for ${currency}...`);
+    return this.makeRequest<MarketTicker>(
+      'get',
+      `/markets/tickers/${currency}`,
+    );
   }
 
   /**
@@ -336,16 +377,9 @@ export class QuidaxService {
    * @param marketId The ID of the market.
    * @param payload Query parameters for k-line data (e.g., limit, period).
    */
-  async fetchKLineForAMarket(
-    marketId: string,
-    payload?: { limit?: number; period?: number },
-  ): Promise<KLineData[]> {
+  async fetchKLineForAMarket(marketId: string): Promise<KLineData[]> {
     this.logger.log(`Fetching k-line data for market ${marketId}...`);
-    const queryString = new URLSearchParams(payload as any).toString();
-    return this.makeRequest<KLineData[]>(
-      'get',
-      `/markets/${marketId}/k_line?${queryString}`,
-    );
+    return this.makeRequest<KLineData[]>('get', `/markets/${marketId}/k`);
   }
 
   /**
@@ -354,16 +388,16 @@ export class QuidaxService {
    * @param payload Query parameters for k-line data (e.g., limit, period).
    */
   async fetchKLineDataWithPendingTradesForAMarket(
-    marketId: string,
+    currency: string,
+    tradeId: string,
     payload?: { limit?: number; period?: number },
   ): Promise<KLineData[]> {
     this.logger.log(
-      `Fetching k-line data with pending trades for market ${marketId}...`,
+      `Fetching k-line data with pending trades for market ${currency}...`,
     );
-    const queryString = new URLSearchParams(payload as any).toString();
     return this.makeRequest<KLineData[]>(
       'get',
-      `/markets/${marketId}/k_line_with_pending_trades?${queryString}`,
+      `/markets/${currency}/k_line_with_pending_trades/${tradeId}`,
     );
   }
 
@@ -373,14 +407,13 @@ export class QuidaxService {
    * @param payload Query parameters for order-book (e.g., limit).
    */
   async fetchOrderBookItemsForAMarket(
-    marketId: string,
+    currency: string,
     payload?: { limit?: number },
   ): Promise<OrderBook> {
-    this.logger.log(`Fetching order-book items for market ${marketId}...`);
-    const queryString = new URLSearchParams(payload as any).toString();
+    this.logger.log(`Fetching order-book items for market ${currency}...`);
     return this.makeRequest<OrderBook>(
       'get',
-      `/markets/${marketId}/order_book?${queryString}`,
+      `/markets/${currency}/order_book`,
     );
   }
 
@@ -390,14 +423,14 @@ export class QuidaxService {
    * @param payload Query parameters for depth data (e.g., limit).
    */
   async fetchDepthDataForAMarket(
-    marketId: string,
+    currency: string,
     payload?: { limit?: number },
   ): Promise<DepthData> {
-    this.logger.log(`Fetching depth data for market ${marketId}...`);
+    this.logger.log(`Fetching depth data for market ${currency}...`);
     const queryString = new URLSearchParams(payload as any).toString();
     return this.makeRequest<DepthData>(
       'get',
-      `/markets/${marketId}/depth?${queryString}`,
+      `/markets/${currency}/depth?${queryString}`,
     );
   }
 
@@ -417,15 +450,11 @@ export class QuidaxService {
    * @param payload Query parameters for trades (e.g., limit).
    */
   async fetchRecentTradesForAGivenMarketPair(
-    marketId: string,
+    marketpair: string,
     payload?: { limit?: number },
   ): Promise<Trade[]> {
-    this.logger.log(`Fetching recent trades for market ${marketId}...`);
-    const queryString = new URLSearchParams(payload as any).toString();
-    return this.makeRequest<Trade[]>(
-      'get',
-      `/markets/${marketId}/trades?${queryString}`,
-    );
+    this.logger.log(`Fetching recent trades for market ${marketpair}...`);
+    return this.makeRequest<Trade[]>('get', `/trades/${marketpair}`);
   }
 
   // --- Deposits API ---
@@ -433,18 +462,29 @@ export class QuidaxService {
   /**
    * Fetches all deposits.
    */
-  async fetchAllDeposits(): Promise<Deposit[]> {
+  async fetchAllDeposits(
+    userId: string,
+    payload?: { currency: string; state: string },
+  ): Promise<Deposit[]> {
     this.logger.log('Fetching all deposits...');
-    return this.makeRequest<Deposit[]>('get', '/deposits');
+    const queryString = new URLSearchParams(payload as any).toString();
+
+    return this.makeRequest<Deposit[]>(
+      'get',
+      `/users/${userId}/deposits?${queryString}`,
+    );
   }
 
   /**
    * Fetches a specific deposit.
    * @param depositId The ID of the deposit to fetch.
    */
-  async fetchADeposit(depositId: string): Promise<Deposit> {
+  async fetchADeposit(depositId: string, userId: string): Promise<Deposit> {
     this.logger.log(`Fetching deposit ${depositId}...`);
-    return this.makeRequest<Deposit>('get', `/deposits/${depositId}`);
+    return this.makeRequest<Deposit>(
+      'get',
+      `/users/${userId}/deposits/${depositId}`,
+    );
   }
 
   /**
@@ -452,7 +492,7 @@ export class QuidaxService {
    */
   async fetchDepositsMadeBySubUsers(): Promise<Deposit[]> {
     this.logger.log('Fetching deposits made by sub-users...');
-    return this.makeRequest<Deposit[]>('get', '/deposits/sub_users');
+    return this.makeRequest<Deposit[]>('get', '/users/deposits/all');
   }
 
   // --- Swap API ---
@@ -462,22 +502,30 @@ export class QuidaxService {
    * @param payload The instant swap creation data.
    */
   async createInstantSwap(
+    userId: string,
     payload: CreateInstantSwapPayload,
   ): Promise<SwapTransaction> {
     this.logger.log('Creating instant swap...');
-    return this.makeRequest<SwapTransaction>('post', '/swaps', payload);
+    return this.makeRequest<SwapTransaction>(
+      'post',
+      `/users/${userId}/swap_quotation`,
+      payload,
+    );
   }
 
   /**
    * Confirms an instant swap.
    * @param swapId The ID of the swap to confirm.
    */
-  async confirmInstantSwap(swapId: string): Promise<SwapTransaction> {
-    this.logger.log(`Confirming instant swap ${swapId}...`);
+  async confirmInstantSwap(
+    quotationId: string,
+    userId: string,
+  ): Promise<SwapTransaction> {
+    this.logger.log(`Confirming instant swap ${quotationId}...`);
     // Assuming no request body is needed for confirm, or a minimal one
     return this.makeRequest<SwapTransaction>(
       'post',
-      `/swaps/${swapId}/confirm`,
+      `/users/${userId}/swap_quotation/$${quotationId}/confirm`,
       {},
     );
   }
@@ -486,12 +534,15 @@ export class QuidaxService {
    * Refreshes an instant swap quotation.
    * @param swapId The ID of the swap to refresh.
    */
-  async refreshInstantSwapQuotation(swapId: string): Promise<SwapTransaction> {
-    this.logger.log(`Refreshing instant swap quotation for ${swapId}...`);
+  async refreshInstantSwapQuotation(
+    quotationId: string,
+    userId: string,
+  ): Promise<SwapTransaction> {
+    this.logger.log(`Refreshing instant swap quotation for ${quotationId}...`);
     // Assuming no request body is needed for refresh, or a minimal one
     return this.makeRequest<SwapTransaction>(
       'post',
-      `/swaps/${swapId}/refresh`,
+      `/users/${userId}/swap_quotation/$${quotationId}/confirm`,
       {},
     );
   }
@@ -500,17 +551,26 @@ export class QuidaxService {
    * Fetches a specific swap transaction.
    * @param swapId The ID of the swap transaction to fetch.
    */
-  async fetchSwapTransaction(swapId: string): Promise<SwapTransaction> {
+  async fetchSwapTransaction(
+    userId: string,
+    swapId: string,
+  ): Promise<SwapTransaction> {
     this.logger.log(`Fetching swap transaction ${swapId}...`);
-    return this.makeRequest<SwapTransaction>('get', `/swaps/${swapId}`);
+    return this.makeRequest<SwapTransaction>(
+      'get',
+      `/users/${userId}/swap_transactions/${swapId}`,
+    );
   }
 
   /**
    * Gets all swap transactions.
    */
-  async getSwapTransactions(): Promise<SwapTransaction[]> {
+  async getSwapTransactions(userId: string): Promise<SwapTransaction[]> {
     this.logger.log('Getting all swap transactions...');
-    return this.makeRequest<SwapTransaction[]>('get', '/swaps');
+    return this.makeRequest<SwapTransaction[]>(
+      'get',
+      `/users/${userId}/swap_transactions`,
+    );
   }
 
   /**
@@ -518,53 +578,16 @@ export class QuidaxService {
    * @param payload The temporary swap quotation data.
    */
   async temporarySwapQuotation(
+    userId: string,
     payload: TemporarySwapQuotationPayload,
-  ): Promise<SwapTransaction> {
+  ): Promise<TemporarySwapQuotationResponse> {
     // Return type is likely a quote object, not a full transaction
     this.logger.log('Fetching temporary swap quotation...');
-    return this.makeRequest<SwapTransaction>(
+    return this.makeRequest<TemporarySwapQuotationResponse>(
       'post',
-      '/swaps/quotation',
+      `/users/${userId}/temporary_swap_quotation`,
       payload,
     );
-  }
-
-  // --- Order API ---
-
-  /**
-   * Creates a sell or buy order.
-   * @param payload The order creation data.
-   */
-  async createASellOrBuyOrder(payload: CreateOrderPayload): Promise<Order> {
-    this.logger.log('Creating a sell or buy order...');
-    return this.makeRequest<Order>('post', '/orders', payload);
-  }
-
-  /**
-   * Gets all orders.
-   */
-  async getAllOrders(): Promise<Order[]> {
-    this.logger.log('Getting all orders...');
-    return this.makeRequest<Order[]>('get', '/orders');
-  }
-
-  /**
-   * Gets details of a specific order.
-   * @param orderId The ID of the order to fetch.
-   */
-  async getAnOrderDetails(orderId: string): Promise<Order> {
-    this.logger.log(`Getting details of order ${orderId}...`);
-    return this.makeRequest<Order>('get', `/orders/${orderId}`);
-  }
-
-  /**
-   * Cancels an order.
-   * @param orderId The ID of the order to cancel.
-   */
-  async cancelAnOrder(orderId: string): Promise<any> {
-    // Return type might be specific
-    this.logger.log(`Cancelling order ${orderId}...`);
-    return this.makeRequest('post', `/orders/${orderId}/cancel`);
   }
 
   // --- Beneficiaries API ---
@@ -572,9 +595,15 @@ export class QuidaxService {
   /**
    * Fetches all beneficiaries.
    */
-  async fetchAllBeneficiaries(): Promise<Beneficiary[]> {
+  async fetchAllBeneficiaries(
+    userId: string,
+    currency: string,
+  ): Promise<Beneficiary[]> {
     this.logger.log('Fetching all beneficiaries...');
-    return this.makeRequest<Beneficiary[]>('get', '/beneficiaries');
+    return this.makeRequest<Beneficiary[]>(
+      'get',
+      `users/${userId}/beneficiaries?currency=${currency}`,
+    );
   }
 
   /**
@@ -582,21 +611,29 @@ export class QuidaxService {
    * @param payload The beneficiary account creation data.
    */
   async createABeneficiaryAccount(
+    userId: string,
     payload: CreateBeneficiaryAccountPayload,
   ): Promise<Beneficiary> {
     this.logger.log('Creating a beneficiary account...');
-    return this.makeRequest<Beneficiary>('post', '/beneficiaries', payload);
+    return this.makeRequest<Beneficiary>(
+      'post',
+      `/users/${userId}/beneficiaries`,
+      payload,
+    );
   }
 
   /**
    * Fetches a specific beneficiary account.
    * @param beneficiaryId The ID of the beneficiary account to fetch.
    */
-  async fetchABeneficiaryAccount(beneficiaryId: string): Promise<Beneficiary> {
+  async fetchABeneficiaryAccount(
+    beneficiaryId: string,
+    userId: string,
+  ): Promise<Beneficiary> {
     this.logger.log(`Fetching beneficiary account ${beneficiaryId}...`);
     return this.makeRequest<Beneficiary>(
       'get',
-      `/beneficiaries/${beneficiaryId}`,
+      `/users/${userId}/beneficiaries/${beneficiaryId}`,
     );
   }
 
@@ -607,12 +644,13 @@ export class QuidaxService {
    */
   async editABeneficiaryAccount(
     beneficiaryId: string,
+    userId: string,
     payload: EditBeneficiaryAccountPayload,
   ): Promise<Beneficiary> {
     this.logger.log(`Editing beneficiary account ${beneficiaryId}...`);
     return this.makeRequest<Beneficiary>(
       'put',
-      `/beneficiaries/${beneficiaryId}`,
+      `/users/${userId}/beneficiaries/${beneficiaryId}`,
       payload,
     );
   }
@@ -626,344 +664,11 @@ export class QuidaxService {
    */
   async getCryptoWithdrawalFees(
     currency: string,
-    amount: number,
   ): Promise<CryptoWithdrawalFees> {
-    this.logger.log(
-      `Getting crypto withdrawal fees for ${currency} amount ${amount}...`,
-    );
+    this.logger.log(`Getting crypto withdrawal fees for ${currency} amount `);
     return this.makeRequest<CryptoWithdrawalFees>(
       'get',
-      `/fees/crypto_withdrawal?currency=${currency}&amount=${amount}`,
-    );
-  }
-
-  // --- Instant Orders API ---
-
-  /**
-   * Fetches all instant orders.
-   */
-  async fetchAllInstantOrders(): Promise<InstantOrder[]> {
-    this.logger.log('Fetching all instant orders...');
-    return this.makeRequest<InstantOrder[]>('get', '/instant_orders');
-  }
-
-  /**
-   * Fetches instant orders created by sub-users.
-   */
-  async fetchInstantOrdersCreatedBySubUsers(): Promise<InstantOrder[]> {
-    this.logger.log('Fetching instant orders created by sub-users...');
-    return this.makeRequest<InstantOrder[]>('get', '/instant_orders/sub_users');
-  }
-
-  /**
-   * Fetches detail of an instant order.
-   * @param instantOrderId The ID of the instant order to fetch.
-   */
-  async fetchDetailOfAnInstantOrder(
-    instantOrderId: string,
-  ): Promise<InstantOrder> {
-    this.logger.log(`Fetching detail of instant order ${instantOrderId}...`);
-    return this.makeRequest<InstantOrder>(
-      'get',
-      `/instant_orders/${instantOrderId}`,
-    );
-  }
-
-  /**
-   * Creates an Instant Order (buy crypto from fiat).
-   * @param payload The instant order creation data.
-   */
-  async createInstantOrderBuyCryptoFromFiat(
-    payload: CreateInstantOrderBuyCryptoFromFiatPayload,
-  ): Promise<InstantOrder> {
-    this.logger.log('Creating instant order (buy crypto from fiat)...');
-    return this.makeRequest<InstantOrder>(
-      'post',
-      '/instant_orders/buy',
-      payload,
-    );
-  }
-
-  /**
-   * Creates an Instant Order (sell crypto to fiat).
-   * @param payload The instant order creation data.
-   */
-  async createInstantOrderSellCryptoToFiat(
-    payload: CreateInstantOrderSellCryptoToFiatPayload,
-  ): Promise<InstantOrder> {
-    this.logger.log('Creating instant order (sell crypto to fiat)...');
-    return this.makeRequest<InstantOrder>(
-      'post',
-      '/instant_orders/sell',
-      payload,
-    );
-  }
-
-  /**
-   * Creates an Instant Order (buy a fixed number of the asset, regardless of the price).
-   * @param payload The instant order creation data.
-   */
-  async createInstantOrderBuyCryptoWithVolume(
-    payload: CreateInstantOrderBuyCryptoWithVolumePayload,
-  ): Promise<InstantOrder> {
-    this.logger.log('Creating instant order (buy crypto with volume)...');
-    return this.makeRequest<InstantOrder>(
-      'post',
-      '/instant_orders/buy_with_volume',
-      payload,
-    );
-  }
-
-  /**
-   * Confirms an instant order.
-   * @param instantOrderId The ID of the instant order to confirm.
-   */
-  async confirmAnInstantOrder(instantOrderId: string): Promise<InstantOrder> {
-    this.logger.log(`Confirming instant order ${instantOrderId}...`);
-    // Assuming no request body is needed for confirm, or a minimal one
-    return this.makeRequest<InstantOrder>(
-      'post',
-      `/instant_orders/${instantOrderId}/confirm`,
-      {},
-    );
-  }
-
-  /**
-   * Requotes an instant order.
-   * @param instantOrderId The ID of the instant order to requote.
-   */
-  async requoteAnInstantOrder(instantOrderId: string): Promise<InstantOrder> {
-    this.logger.log(`Requoting instant order ${instantOrderId}...`);
-    // Assuming no request body is needed for requote, or a minimal one
-    return this.makeRequest<InstantOrder>(
-      'post',
-      `/instant_orders/${instantOrderId}/requote`,
-      {},
-    );
-  }
-
-  // --- RAMP API ---
-
-  /**
-   * Fetches an off-ramp transaction.
-   * @param transactionId The ID of the off-ramp transaction.
-   */
-  async fetchOffRampTransaction(
-    transactionId: string,
-  ): Promise<RampTransaction> {
-    this.logger.log(`Fetching off-ramp transaction ${transactionId}...`);
-    return this.makeRequest<RampTransaction>(
-      'get',
-      `/ramp/off_ramp/${transactionId}`,
-    );
-  }
-
-  /**
-   * Fetches an on-ramp transaction.
-   * @param transactionId The ID of the on-ramp transaction.
-   */
-  async fetchOnRampTransaction(
-    transactionId: string,
-  ): Promise<RampTransaction> {
-    this.logger.log(`Fetching on-ramp transaction ${transactionId}...`);
-    return this.makeRequest<RampTransaction>(
-      'get',
-      `/ramp/on_ramp/${transactionId}`,
-    );
-  }
-
-  /**
-   * Fetches available payment methods for RAMP.
-   */
-  async getPaymentMethods(): Promise<PaymentMethod[]> {
-    this.logger.log('Fetching RAMP payment methods...');
-    return this.makeRequest<PaymentMethod[]>('get', '/ramp/payment_methods');
-  }
-
-  /**
-   * Fetches purchase limits for buying (fiat to crypto).
-   * @param payload Query parameters for purchase limits.
-   */
-  async getPurchaseLimitsBuy(payload?: {
-    currency?: string;
-    payment_method_id?: string;
-  }): Promise<PurchaseLimit[]> {
-    this.logger.log('Fetching purchase limits (BUY)...');
-    const queryString = new URLSearchParams(payload as any).toString();
-    return this.makeRequest<PurchaseLimit[]>(
-      'get',
-      `/ramp/purchase_limits/buy?${queryString}`,
-    );
-  }
-
-  /**
-   * Fetches purchase limits for selling (crypto to fiat).
-   * @param payload Query parameters for purchase limits.
-   */
-  async getPurchaseLimitsSell(payload?: {
-    currency?: string;
-    payment_method_id?: string;
-  }): Promise<PurchaseLimit[]> {
-    this.logger.log('Fetching purchase limits (SELL)...');
-    const queryString = new URLSearchParams(payload as any).toString();
-    return this.makeRequest<PurchaseLimit[]>(
-      'get',
-      `/ramp/purchase_limits/sell?${queryString}`,
-    );
-  }
-
-  /**
-   * Fetches purchase quotes for buying (fiat to crypto).
-   * @param payload Query parameters for purchase quotes.
-   */
-  async getPurchaseQuotesBuy(payload?: {
-    from_currency: string;
-    to_currency: string;
-    amount: string;
-  }): Promise<PurchaseQuote> {
-    this.logger.log('Fetching purchase quotes (BUY)...');
-    const queryString = new URLSearchParams(payload as any).toString();
-    return this.makeRequest<PurchaseQuote>(
-      'get',
-      `/ramp/purchase_quotes/buy?${queryString}`,
-    );
-  }
-
-  /**
-   * Fetches purchase quotes for selling (crypto to fiat).
-   * @param payload Query parameters for purchase quotes.
-   */
-  async getPurchaseQuotesSell(payload?: {
-    from_currency: string;
-    to_currency: string;
-    amount: string;
-  }): Promise<PurchaseQuote> {
-    this.logger.log('Fetching purchase quotes (SELL)...');
-    const queryString = new URLSearchParams(payload as any).toString();
-    return this.makeRequest<PurchaseQuote>(
-      'get',
-      `/ramp/purchase_quotes/sell?${queryString}`,
-    );
-  }
-
-  // --- CUSTODIAL API ---
-
-  /**
-   * Initiates an on-ramp transaction (fiat to crypto).
-   * @param payload The on-ramp transaction initiation data.
-   */
-  async initiateOnRampTransaction(
-    payload: InitiateOnRampTransactionPayload,
-  ): Promise<RampTransaction> {
-    this.logger.log('Initiating on-ramp transaction...');
-    return this.makeRequest<RampTransaction>(
-      'post',
-      '/custodial/on_ramp',
-      payload,
-    );
-  }
-
-  /**
-   * Refreshes an on-ramp transaction.
-   * @param transactionId The ID of the on-ramp transaction to refresh.
-   * @param payload The refresh data.
-   */
-  async refreshOnRampTransaction(
-    transactionId: string,
-    payload: any,
-  ): Promise<RampTransaction> {
-    // Payload might be specific
-    this.logger.log(`Refreshing on-ramp transaction ${transactionId}...`);
-    return this.makeRequest<RampTransaction>(
-      'put',
-      `/custodial/on_ramp/${transactionId}`,
-      payload,
-    );
-  }
-
-  /**
-   * Confirms an on-ramp transaction.
-   * @param transactionId The ID of the on-ramp transaction to confirm.
-   */
-  async confirmOnRampTransaction(
-    transactionId: string,
-  ): Promise<RampTransaction> {
-    this.logger.log(`Confirming on-ramp transaction ${transactionId}...`);
-    return this.makeRequest<RampTransaction>(
-      'post',
-      `/custodial/on_ramp/${transactionId}/confirm`,
-      {},
-    );
-  }
-
-  /**
-   * Initiates an off-ramp transaction (crypto to fiat).
-   * @param payload The off-ramp transaction initiation data.
-   */
-  async initiateOffRampTransaction(
-    payload: InitiateOffRampTransactionPayload,
-  ): Promise<RampTransaction> {
-    this.logger.log('Initiating off-ramp transaction...');
-    return this.makeRequest<RampTransaction>(
-      'post',
-      '/custodial/off_ramp',
-      payload,
-    );
-  }
-
-  /**
-   * Refreshes an off-ramp transaction.
-   * @param transactionId The ID of the off-ramp transaction to refresh.
-   * @param payload The refresh data.
-   */
-  async refreshOffRampTransaction(
-    transactionId: string,
-    payload: any,
-  ): Promise<RampTransaction> {
-    // Payload might be specific
-    this.logger.log(`Refreshing off-ramp transaction ${transactionId}...`);
-    return this.makeRequest<RampTransaction>(
-      'put',
-      `/custodial/off_ramp/${transactionId}`,
-      payload,
-    );
-  }
-
-  /**
-   * Confirms an off-ramp transaction.
-   * @param transactionId The ID of the off-ramp transaction to confirm.
-   */
-  async confirmOffRampTransaction(
-    transactionId: string,
-  ): Promise<RampTransaction> {
-    this.logger.log(`Confirming off-ramp transaction ${transactionId}...`);
-    return this.makeRequest<RampTransaction>(
-      'post',
-      `/custodial/off_ramp/${transactionId}/confirm`,
-      {},
-    );
-  }
-
-  /**
-   * Fetches available banks for off-ramp transactions.
-   */
-  async getBanksOffRamp(): Promise<BankAccount[]> {
-    this.logger.log('Fetching banks for off-ramp...');
-    return this.makeRequest<BankAccount[]>('get', '/custodial/banks/off_ramp');
-  }
-
-  /**
-   * Adds a bank account for off-ramp transactions.
-   * @param payload The bank account details to add.
-   */
-  async addBankAccountOffRamp(
-    payload: BankAccountOffRampPayload,
-  ): Promise<BankAccount> {
-    this.logger.log('Adding bank account for off-ramp...');
-    return this.makeRequest<BankAccount>(
-      'post',
-      '/custodial/banks/off_ramp',
-      payload,
+      `/fee?currency=${currency}`,
     );
   }
 }

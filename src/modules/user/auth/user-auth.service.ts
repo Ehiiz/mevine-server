@@ -1,7 +1,6 @@
 import {
   ConflictException,
   Injectable,
-  InternalServerErrorException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -18,6 +17,8 @@ import {
 } from 'src/core/integrations/emails/email.utils';
 import { BcryptService } from 'src/core/security/bcrypt.service';
 import { generateRandomDigits } from 'src/core/utils/random-generator.util';
+import { QuidaxProducerService } from 'src/modules/providers/crypto/quidax/processor/quidax-producer.service';
+import { CreateSubAccountQuidaxEvent } from 'src/modules/providers/crypto/quidax/processor/quidax.utils';
 
 @Injectable()
 export class UserAuthService {
@@ -27,7 +28,7 @@ export class UserAuthService {
     private readonly jwtService: JwtService,
     private readonly bcryptService: BcryptService,
     private readonly emailQueueService: EmailQueueService,
-    private readonly configService: ConfigService,
+    private readonly quidaxProducerService: QuidaxProducerService,
   ) {
     // this.secret = this.configService.get<string>('JWT_SECRET')!;
   }
@@ -180,7 +181,7 @@ export class UserAuthService {
 
       // Update user fields
       body.user.phoneNumber = body.phoneNumber;
-      body.user.avatar = body.avatar || body.user.avatar; // Handle optional avatar
+      body.user.avatar = body.avatar || body.user.avatar;
       body.user.firstName = body.firstName;
       body.user.lastName = body.lastName;
 
@@ -192,11 +193,23 @@ export class UserAuthService {
       body.user.accountStatus.completeSetup = true;
 
       await body.user.save();
-
       await body.user.activateUser();
 
       // Generate token after successful save
       const token = this.jwtService.sign({ id: body.user.id });
+
+      const quidaxEvent = new CreateSubAccountQuidaxEvent(
+        {
+          first_name: body.user.firstName,
+          last_name: body.user.lastName,
+          email: body.user.email,
+          phone_number: body.user.phoneNumber,
+        },
+        body.user.email,
+      );
+
+      // Send request to the queue
+      await this.quidaxProducerService.addQuidaxApiOperation(quidaxEvent);
 
       // Send email notification
       const event = new UserCompleteSetupEvent(
@@ -283,7 +296,7 @@ export class UserAuthService {
 
       const token = this.jwtService.sign({ id: user.id });
 
-      return { token, user: user.toJSON() as User };
+      return { token, user: user.toObject() as User };
     } catch (error) {
       throw error;
     }

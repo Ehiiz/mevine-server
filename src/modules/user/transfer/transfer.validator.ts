@@ -24,6 +24,7 @@ import {
   CustomerValidateResponse,
   TransferRecipientResponseData,
 } from 'src/modules/providers/bank/vfd/vfd.interface';
+import { FeeRange } from 'src/modules/providers/crypto/quidax/quidax.interface';
 
 // Regex for 4-digit transaction PIN
 const pinRegex = /^\d{4}$/;
@@ -269,6 +270,67 @@ export class TransferRecipientResponse
 
   @ApiProperty({ type: 'string', example: 'VFD Bank' })
   bank: string;
+}
+
+export type QuidaxRawFeeData =
+  | {
+      type: 'flat';
+      fee: number; // For flat fees, 'fee' is a single number
+    }
+  | {
+      type: 'range';
+      fee: FeeRange[]; // For range fees, 'fee' is an array of FeeRange objects
+    };
+export class CryptoFeesResponseDto {
+  @ApiProperty({
+    enum: ['flat', 'range'],
+    description:
+      'Type of fee structure from the external provider (e.g., Quidax).',
+  })
+  type: 'flat' | 'range';
+
+  @ApiProperty({
+    oneOf: [
+      { type: 'number', description: 'Flat fee value from external provider.' },
+      { type: 'array', items: { $ref: '#/components/schemas/FeeRange' } },
+    ],
+    description:
+      'The raw fee value or range definition from the external provider.',
+  })
+  fee: number | FeeRange[]; // This is the raw fee structure from the external API
+
+  @ApiProperty({
+    type: 'number',
+    description:
+      'The network fee used for calculating the minimum deposit (in crypto units).',
+  })
+  networkFeeForMinDeposit: number;
+
+  @ApiProperty({
+    type: 'number',
+    description: 'Our in-house fee for this cryptocurrency (in crypto units).',
+  })
+  inHouseFee: number;
+
+  @ApiProperty({
+    type: 'number',
+    description:
+      'Additional Meviné fee (10% of total base fees) (in crypto units).',
+  })
+  mevineFees: number;
+
+  @ApiProperty({
+    type: 'number',
+    description:
+      'The absolute minimum deposit required for this cryptocurrency (in crypto units), factoring in all fees and a buffer.',
+  })
+  minimumDepositRequiredCrypto: number;
+
+  @ApiProperty({
+    type: 'string',
+    description: 'The naira equivalent of the mimimum deposit',
+  })
+  swapAmount?: string;
 }
 
 export class BillerCategoryResponse implements BillerCategory {

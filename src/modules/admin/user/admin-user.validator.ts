@@ -10,6 +10,7 @@ import {
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import { User } from 'src/core/database/schemas/user.schema'; // Import User schema for response typing
+import { ICryptoDetails } from 'src/core/interfaces/user.interface';
 
 export class FetchUsersQueryDto {
   @ApiProperty({
@@ -129,6 +130,9 @@ export class UserResponseSchema
   @ApiProperty({ type: 'string', example: 'someFcmToken', nullable: true })
   fcmToken: string;
 
+  @ApiProperty({ type: 'string', example: 'someFcmToken', nullable: true })
+  quidaxId: string;
+
   @ApiProperty({
     type: 'object',
     properties: {
@@ -141,18 +145,26 @@ export class UserResponseSchema
   bankDetails: any;
 
   @ApiProperty({
-    type: 'array',
-    items: {
+    type: 'object', // Changed from 'array' to 'object'
+    // This indicates that the object can have arbitrary string keys
+    // and each value will conform to the specified schema.
+    additionalProperties: {
       type: 'object',
       properties: {
-        blockchain: { type: 'string' },
-        address: { type: 'string' },
+        address: { type: 'string', example: '0x123...' },
+        set: { type: 'boolean', example: true },
       },
     },
-    example: [{ blockchain: 'ethereum', address: '0x123...' }],
+    example: {
+      ethereum: { address: '0x1234567890abcdef', set: true },
+      bitcoin: { address: '', set: false },
+      usdt: { address: 'TRX_USDT_ADDRESS', set: false },
+    },
+    description:
+      'A map of cryptocurrency addresses, keyed by blockchain symbol.',
     nullable: true,
   })
-  cryptoAddresses: any[];
+  cryptoAddresses: Map<string, ICryptoDetails>;
 
   @ApiProperty({ type: 'boolean', example: false })
   deleted: boolean;

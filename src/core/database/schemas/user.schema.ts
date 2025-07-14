@@ -99,14 +99,24 @@ export class User implements UserMethods {
   bankDetails: IBankDetails;
 
   @Prop({
-    type: [
-      {
-        blockchain: { type: String, enum: Object.values(BlockchainEnum) },
-        address: String,
-      },
-    ],
+    type: Map, // Changed from array to Map
+    of: {
+      // Defines the schema for each value in the map
+      address: { type: String, default: '' }, // Default empty address string
+      set: { type: Boolean, default: false }, // Default set to false
+    },
+    default: () => {
+      const defaultMap = new Map<string, ICryptoDetails>();
+      Object.values(BlockchainEnum).forEach((blockchain) => {
+        defaultMap.set(blockchain, { address: '', set: false });
+      });
+      return defaultMap;
+    },
   })
-  cryptoAddresses: ICryptoDetails[];
+  cryptoAddresses: Map<string, ICryptoDetails>;
+
+  @Prop({ type: String })
+  quidaxId: string;
 
   @Prop({
     type: Boolean,
@@ -186,6 +196,16 @@ UserSchema.methods.activateUser = async function (): Promise<{
 
 // toJSON configuration
 UserSchema.set('toJSON', {
+  virtuals: true,
+  transform: (doc, ret) => {
+    ret.id = ret._id.toHexString();
+    delete ret._id;
+    delete ret.auth; // Remove sensitive auth data
+    return ret;
+  },
+});
+
+UserSchema.set('toObject', {
   virtuals: true,
   transform: (doc, ret) => {
     ret.id = ret._id.toHexString();

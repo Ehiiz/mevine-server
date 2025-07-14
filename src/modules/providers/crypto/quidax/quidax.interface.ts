@@ -1,7 +1,7 @@
 import { N } from '@faker-js/faker/dist/airline-BUL6NtOJ';
 
 export interface QuidaxApiResponse<T> {
-  code: number;
+  status: string;
   message: string;
   data: T;
 }
@@ -27,16 +27,25 @@ export interface SubAccount {
   first_name: string;
   last_name: string;
   phone_number: string;
+
+  sn: string;
+
+  reference: null | string;
+
+  display_name: string | null;
+  created_at: string;
+  updated_at: string;
   // Add other relevant fields as per Quidax documentation
 }
 
 // --- Wallets Interfaces ---
 export interface CreatePaymentAddressPayload {
   currency: string;
-  sub_account_id?: string; // Optional if using master account
+  user_id?: string; // Optional if using master account
 }
 
 export interface ReEnqueGeneratedWalletAddressPayload {
+  currency: string;
   address_id: string; // Assuming an address ID is needed to re-enqueue
   // Add other necessary fields if any
 }
@@ -49,23 +58,43 @@ export interface Wallet {
   // Add other relevant fields
 }
 
+export interface WalletGeneratedUser {
+  id?: string;
+  sn?: string;
+  email?: string;
+  reference?: string | null;
+  first_name?: string;
+  last_name?: string;
+  display_name?: string | null;
+  created_at?: string; // ISO 8601 date string
+  updated_at?: string; // ISO 8601 date string
+}
+
+/**
+ * Interface for the 'data' payload of a 'wallet.address.generated' webhook event.
+ * All properties are optional.
+ */
 export interface PaymentAddress {
-  id: string;
-  address: string;
-  currency: string;
-  state: string; // e.g., 'active', 'pending'
-  // Add other relevant fields
+  id?: string;
+  reference?: string | null;
+  currency?: string; // e.g., "dot", "trx"
+  address?: string | null; // The generated crypto address
+  network?: string; // e.g., "bep20", "trc20"
+  user?: WalletGeneratedUser;
+  destination_tag?: string | null;
+  total_payments?: number | null; // Assuming this could be a number or null
+  created_at?: string; // ISO 8601 date string
+  updated_at?: string; // ISO 8601 date string
 }
 
 // --- Withdrawals Interfaces ---
 export interface CreateWithdrawalPayload {
   currency: string;
   amount: string;
-  address: string;
+  fund_uid: string;
+  fund_uid2?: string;
+  transaction_note: string;
   narration?: string;
-  sub_account_id?: string; // If withdrawing from a sub-account
-  beneficiary_id?: string; // If withdrawing to a saved beneficiary
-  // Add other relevant fields like `otp` or `pin` if required by Quidax for withdrawals
 }
 
 export interface Withdrawal {
@@ -174,7 +203,17 @@ export interface CreateInstantSwapPayload {
 export interface TemporarySwapQuotationPayload {
   from_currency: string;
   to_currency: string;
-  amount: string; // The amount of from_currency for which to get a quote
+  from_amount?: string; // The amount of from_currency for which to get a quote
+  to_amount?: string;
+}
+
+export interface TemporarySwapQuotationResponse {
+  from_currency: string;
+  to_currency: string;
+  from_amount: string; // The amount of from_currency for which to get a quote
+  to_amount: string;
+  quoted_price: string;
+  quoted_currency: string;
 }
 
 export interface SwapTransaction {
@@ -231,13 +270,26 @@ export interface Beneficiary {
   // Add other relevant fields
 }
 
-// --- Fees Interfaces ---
-export interface CryptoWithdrawalFees {
-  currency: string;
-  amount: string;
-  fee: string;
-  // Add other relevant fields
+export interface FeeRange {
+  min: number;
+  max: number;
+  type: 'flat' | 'percentage'; // Assuming 'flat' or 'percentage' for range types
+  value: number; // The fee value for this range
 }
+
+/**
+ * Represents the structure of the 'data' object for crypto withdrawal fees.
+ * This interface uses a discriminated union to handle different 'type' values.
+ */
+export type CryptoWithdrawalFees =
+  | {
+      type: 'flat';
+      fee: number; // For flat fees, 'fee' is a single number
+    }
+  | {
+      type: 'range';
+      fee: FeeRange[]; // For range fees, 'fee' is an array of FeeRange objects
+    };
 
 // --- Instant Orders Interfaces ---
 export interface CreateInstantOrderBuyCryptoFromFiatPayload {

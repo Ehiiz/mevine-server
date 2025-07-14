@@ -3,7 +3,8 @@ import {
   NotFoundException,
   UnauthorizedException,
   BadRequestException, // For insufficient balance
-  InternalServerErrorException, // For general transaction errors
+  InternalServerErrorException,
+  Logger, // For general transaction errors
 } from '@nestjs/common';
 import { sha512 } from 'js-sha512';
 import { DatabaseService } from 'src/core/database/database.service';
@@ -19,7 +20,7 @@ import {
   Transaction,
   TransactionDocument,
 } from 'src/core/database/schemas/transaction.schema';
-import { UserDocument } from 'src/core/database/schemas/user.schema'; // Import UserDocument
+import { User, UserDocument } from 'src/core/database/schemas/user.schema'; // Import UserDocument
 import { BcryptService } from 'src/core/security/bcrypt.service';
 import {
   Bank,
@@ -32,14 +33,55 @@ import {
 import { VFDService } from 'src/modules/providers/bank/vfd/vfd.service';
 import * as mongoose from 'mongoose'; // Import mongoose for sessions
 import { WalletDocument } from 'src/core/database/schemas/wallet.schema';
+import { QuidaxService } from 'src/modules/providers/crypto/quidax/quidax.service';
+import {
+  CryptoWithdrawalFees,
+  FeeRange,
+} from 'src/modules/providers/crypto/quidax/quidax.interface';
+import { CryptoFeesResponseDto, QuidaxRawFeeData } from './transfer.validator';
+
+const IN_HOUSE_FEES: { [key: string]: number } = {
+  btc: 0.00005, // e.g., 5,000 satoshis
+  eth: 0.0002,
+  sol: 0.001,
+  usdt: 0.5,
+  trx: 0.2,
+};
+
+const ABSOLUTE_MIN_DEPOSIT_CRYPTO: { [key: string]: number } = {
+  btc: 0.0002, // e.g., 20,000 satoshis (a reasonable small deposit)
+  eth: 0.01,
+  sol: 0.1,
+  usdt: 10,
+  trx: 20,
+};
+
+const MEVINE_FEE_PERCENTAGE = 0.1; // 10% additional fee
 
 @Injectable()
 export class UserTransferService {
+  private readonly logger = new Logger(UserTransferService.name);
   constructor(
     private readonly bankService: VFDService,
     private readonly databaseService: DatabaseService,
     private readonly bcryptService: BcryptService,
+    private readonly quidaxService: QuidaxService,
   ) {}
+
+  private getNetworkFeeForMinimumDeposit(
+    feeData: CryptoWithdrawalFees,
+  ): number {
+    if (feeData.type === 'flat') {
+      return feeData.fee as number;
+    } else if (feeData.type === 'range') {
+      const ranges = feeData.fee as FeeRange[];
+      if (ranges.length > 0) {
+        // For minimum deposit calculation, we assume the fee for the smallest range
+        return ranges[0].value;
+      }
+    }
+    return 0; // Fallback, though ideally, all currencies would have a defined fee structure
+  }
 
   async getBanks(): Promise<Bank[]> {
     try {
@@ -49,6 +91,97 @@ export class UserTransferService {
       }
       return data;
     } catch (error) {
+      throw error;
+    }
+  }
+
+  async fetchFees(currency: string): Promise<CryptoFeesResponseDto> {
+    try {
+      // Ensure currency is lowercase for consistent mapping with constants
+      const lowerCaseCurrency = currency.toLowerCase();
+
+      // 1. Fetch raw network fee data from Quidax
+      const quidaxFeeData: QuidaxRawFeeData =
+        await this.quidaxService.getCryptoWithdrawalFees(lowerCaseCurrency);
+
+      if (!quidaxFeeData) {
+        throw new NotFoundException(
+          `Crypto fees for ${currency} cannot be fetched or are not available from Quidax.`,
+        );
+      }
+
+      // 2. Get the specific network fee relevant for minimum deposit calculation
+      const networkFeeForMinDeposit =
+        this.getNetworkFeeForMinimumDeposit(quidaxFeeData);
+
+      // 3. Get our In-House Fee
+      const inHouseFee = IN_HOUSE_FEES[lowerCaseCurrency];
+      if (inHouseFee === undefined) {
+        this.logger.warn(
+          `In-house fee not configured for currency: ${currency}. Please check IN_HOUSE_FEES constant.`,
+        );
+        throw new NotFoundException(
+          `In-house fee configuration missing for ${currency}.`,
+        );
+      }
+
+      // 5. Calculate Meviné Fees (10% of total base fees)
+      const mevineFees = networkFeeForMinDeposit * MEVINE_FEE_PERCENTAGE;
+
+      // 6. Calculate Total Fees (all fees combined)
+      // This is the total cost of fees that needs to be covered by the deposit.
+      const totalAllFees = networkFeeForMinDeposit + mevineFees;
+
+      // 7. Determine Minimum Deposit Required Crypto
+      // This minimum should cover all fees and provide a small buffer
+      // to ensure the user receives a meaningful amount.
+      // We'll use a 10% buffer on top of all fees, or the absolute minimum, whichever is greater.
+      const minDepositBasedOnFees = totalAllFees * 1.1; // 10% buffer on top of all fees
+
+      const absoluteMin = ABSOLUTE_MIN_DEPOSIT_CRYPTO[lowerCaseCurrency];
+      if (absoluteMin === undefined) {
+        this.logger.warn(
+          `Absolute minimum deposit not configured for currency: ${currency}. Please check ABSOLUTE_MIN_DEPOSIT_CRYPTO constant.`,
+        );
+        throw new NotFoundException(
+          `Absolute minimum deposit configuration missing for ${currency}.`,
+        );
+      }
+
+      const minimumDepositRequiredCrypto = Math.max(
+        absoluteMin,
+        minDepositBasedOnFees,
+      );
+
+      await this.quidaxService.getCryptoWithdrawalFees(lowerCaseCurrency);
+
+      // Construct the response DTO with all calculated fields
+      const responseDto: CryptoFeesResponseDto = {
+        type: quidaxFeeData.type,
+        fee: quidaxFeeData.fee, // This is the raw network fee structure from Quidax
+        networkFeeForMinDeposit: parseFloat(networkFeeForMinDeposit.toFixed(8)), // Round for precision
+        inHouseFee: parseFloat(inHouseFee.toFixed(8)),
+        mevineFees: parseFloat(mevineFees.toFixed(8)),
+        minimumDepositRequiredCrypto: parseFloat(
+          minimumDepositRequiredCrypto.toFixed(8),
+        ),
+      };
+
+      const quotation = await this.quidaxService.temporarySwapQuotation('me', {
+        from_currency: lowerCaseCurrency,
+        to_currency: 'NGN',
+        from_amount: responseDto.minimumDepositRequiredCrypto.toFixed(),
+      });
+
+      responseDto.swapAmount = quotation.quoted_price;
+
+      return responseDto;
+    } catch (error) {
+      this.logger.error(
+        `Error fetching or calculating fees for ${currency}: ${error.message}`,
+        error.stack,
+      );
+      // Re-throw the error for NestJS's global exception filter to handle
       throw error;
     }
   }

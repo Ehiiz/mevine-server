@@ -158,16 +158,16 @@ export class SeedService implements OnModuleInit {
         bankCode: faker.finance.routingNumber(),
       };
 
-      const userCryptoDetails: ICryptoDetails[] = [
-        {
-          blockchain: BlockchainEnum.bitcoin,
-          address: faker.finance.ethereumAddress(),
-        },
-        {
-          blockchain: BlockchainEnum.ethereum,
-          address: faker.finance.ethereumAddress(),
-        },
-      ];
+      // const userCryptoDetails: ICryptoDetails[] = [
+      //   {
+      //     blockchain: BlockchainEnum.bitcoin,
+      //     address: faker.finance.ethereumAddress(),
+      //   },
+      //   {
+      //     blockchain: BlockchainEnum.ethereum,
+      //     address: faker.finance.ethereumAddress(),
+      //   },
+      // ];
 
       const user: UserDocument = await this.databaseService.users.create({
         // Use databaseService.users
@@ -181,7 +181,7 @@ export class SeedService implements OnModuleInit {
         accountStatus: userAccountStatus,
         fcmToken: faker.string.alphanumeric(20),
         bankDetails: userBankDetails,
-        cryptoAddresses: userCryptoDetails,
+        //  cryptoAddresses: userCryptoDetails,
         deleted: false,
         restricted: false,
         referralCode: generateRandomDigits(),

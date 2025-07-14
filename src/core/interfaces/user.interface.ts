@@ -1,7 +1,9 @@
 export enum BlockchainEnum {
-  bitcoin = 'bitcoin',
-  ethereum = 'ethereum',
+  bitcoin = 'btc',
+  ethereum = 'eth',
   usdt = 'usdt',
+  tron = 'trx',
+  sol = 'sol',
 }
 
 export interface IBankDetails {
@@ -11,8 +13,8 @@ export interface IBankDetails {
 }
 
 export interface ICryptoDetails {
-  blockchain: BlockchainEnum;
   address: string;
+  set: boolean;
 }
 
 // Define a new interface for the flattened notification response structure

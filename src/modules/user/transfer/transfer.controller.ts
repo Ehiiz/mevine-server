@@ -8,6 +8,7 @@ import {
   HttpStatus,
   UseGuards,
   Req,
+  Param,
 } from '@nestjs/common';
 import {
   ConfirmBankDetailsDto,
@@ -21,6 +22,7 @@ import {
   BillerResponse,
   BillerItemsResponse,
   CustomerValidateSuccessResponse,
+  CryptoFeesResponseDto,
 } from './transfer.validator';
 import {
   ApiTags,
@@ -78,16 +80,6 @@ export class UserTransferController {
       },
     },
   })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Bank lists cannot be fetched.',
-    type: ErrorResponseDto,
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: 'Unauthorized.',
-    type: ErrorResponseDto,
-  })
   async getBanks(): Promise<{ message: string; data: Bank[] }> {
     try {
       const banks = await this.userTransferService.getBanks();
@@ -96,6 +88,38 @@ export class UserTransferController {
         data: banks,
       };
     } catch (error) {
+      throw error;
+    }
+  }
+
+  @Get('crypto-fees/:currency')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get crypto deposit fees and minimum balance information',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Crypto fee information fetched successfully.',
+    type: CryptoFeesResponseDto, // Reference the new DTO schema for Swagger documentation
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description:
+      'Crypto fees or configuration not found for the specified currency.',
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description: 'An unexpected error occurred while processing the request.',
+  })
+  async fetchFees(
+    @Param('currency') currency: string,
+  ): Promise<{ message: string; data: CryptoFeesResponseDto }> {
+    try {
+      const data = await this.userTransferService.fetchFees(currency);
+      // The service already returns the DTO, so just return it directly
+      return { message: 'Successfully fetched fees details', data };
+    } catch (error) {
+      // Let NestJS's global exception filter handle the error response (e.g., NotFoundException, InternalServerErrorException)
       throw error;
     }
   }
@@ -120,21 +144,6 @@ export class UserTransferController {
         },
       },
     },
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Account owner not verified or bank not found.',
-    type: ErrorResponseDto,
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: 'Unauthorized.',
-    type: ErrorResponseDto,
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Validation failed for account details.',
-    type: ErrorResponseDto,
   })
   async confirmBankDetails(
     @Body() body: ConfirmBankDetailsDto,
