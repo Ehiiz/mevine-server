@@ -499,11 +499,9 @@ export interface DepositCompletedData {
  * Interface for the 'recipient' object within the WithdrawalCompletedData.
  */
 export interface WithdrawalRecipient {
-  type?: string; // e.g., "coin_address"
+  type?: string; // e.g., "internal"
   details?: {
-    address?: string;
-    destination_tag?: string | null;
-    name?: string | null;
+    user_id?: string;
   };
 }
 

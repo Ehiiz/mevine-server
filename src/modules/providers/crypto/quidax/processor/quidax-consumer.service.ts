@@ -16,7 +16,6 @@ import {
   CryptoWithdrawalFees,
   DepositCompletedData,
   FeeRange,
-  SubAccount,
   WalletGeneratedData,
   WithdrawalCompletedData,
 } from '../quidax.interface';
@@ -75,6 +74,7 @@ export class QuidaxConsumerService extends WorkerHost {
   private readonly platformClient: string;
   private readonly platformAccountId: string;
   private readonly platformAccountNumber: string;
+  private readonly platformQuidaxId: string;
 
   constructor(
     private readonly databaseService: DatabaseService,
@@ -95,7 +95,8 @@ export class QuidaxConsumerService extends WorkerHost {
       this.configService.get<string>('PLATFORM_ACCOUNT_ID') || '';
     this.platformAccountNumber =
       this.configService.get<string>('PLATFORM_ACCOUNT_NUMBER') || '';
-
+    this.platformQuidaxId =
+      this.configService.get<string>('PLATFORM_QUIDAX_ID') || '';
     // Log initialization for debugging
     this.logger.log('QuidaxConsumerService initialized with platform config');
   }
@@ -245,7 +246,7 @@ export class QuidaxConsumerService extends WorkerHost {
         amount: depositData!.amount,
         transaction_note: `Deposit completed for user ${depositData.user.id}`,
         narration: `Automated withdrawal for deposit ${depositData.id}`,
-        fund_uid: 'me', // Pass if withdrawal API requires it
+        fund_uid: this.platformQuidaxId, // Pass if withdrawal API requires it
       };
 
       const user = await this.databaseService.users.findOne({
