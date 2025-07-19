@@ -117,22 +117,34 @@ export class QuidaxConsumerService extends WorkerHost {
         const formattedEvent = event as unknown as CreateSubAccountQuidaxEvent;
 
         await this.processSubAccountCreation(formattedEvent.data);
-        this.logger.log(`Processing job: ${job.name}`);
+        this.logger.log(`Processing job: ${job.name} for Sub Account Creation`);
         break;
 
       case QuidaxEventsEnum.UPDATE_USER_WALLET:
+        this.logger.log(
+          `Processing job: ${job.name} for Wallet Update Creation`,
+        );
+
         const userWalletEvent = event as unknown as UpdateUserWalletQuidaxEvent;
         await this.processPaymentWalletGeneration(userWalletEvent.data);
         break;
 
       case QuidaxEventsEnum.DEPOSIT_COMPLETED:
+        this.logger.log(`Processing job: ${job.name} for Deposit Complete`);
+
         const depositEvent = event as unknown as CreateWithdrawalQuidaxEvent;
         await this.processDeposit(depositEvent.data);
         break;
 
       case QuidaxEventsEnum.INITIATE_TRANSFER:
+        this.logger.log(`Processing job: ${job.name} for Transfer Initiation`);
+
         const withdrawalEvent = event as unknown as CreateUserCreditQuidaxEvent;
         await this.processWalletTransfer(withdrawalEvent.data);
+        break;
+
+      default:
+        this.logger.log(`Unknown event type: ${event.requestName}`);
         break;
     }
 
@@ -201,6 +213,7 @@ export class QuidaxConsumerService extends WorkerHost {
   private async processPaymentWalletGeneration(
     addressData: WalletGeneratedData,
   ) {
+    console.log('I enter here at least');
     this.logger.log('I ran into here');
     this.logger.log(
       `The address ${addressData.currency} : ${addressData.address} successfully generated for ${addressData.user.email} `,
