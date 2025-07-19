@@ -11,6 +11,7 @@ export interface IBankDetails {
   bankName: string;
   bankCode: string;
   accountName: string;
+  bvn: string;
 }
 
 export interface ICryptoDetails {

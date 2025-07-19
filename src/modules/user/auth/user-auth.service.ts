@@ -190,16 +190,21 @@ export class UserAuthService {
       );
       const hashedPin = await this.bcryptService.hashPassword(body.passcode);
 
-      const { data } = await this.vfdService.createWalletNoConsent({
-        bvn: body.bvn,
-        dateOfBirth: body.dateOfBirth,
-      });
+      const { data } = await this.vfdService.createWalletNoConsent(
+        {
+          bvn: body.bvn,
+          dateOfBirth: body.dateOfBirth,
+        },
+        false,
+        { previousAccountNo: '1001660487' },
+      );
       if (!body.user.bankDetails) {
         body.user.bankDetails = {
           accountNumber: '',
           bankName: '',
           bankCode: '',
           accountName: '',
+          bvn: '',
         };
       }
 
@@ -208,6 +213,7 @@ export class UserAuthService {
       body.user.bankDetails.accountName = data!.accountName!;
       body.user.bankDetails.bankCode = '999999';
       body.user.bankDetails.bankName = 'VFD Microfinance Bank';
+      body.user.bankDetails.bvn = body.bvn!;
 
       // Update user fields
       body.user.phoneNumber = body.phoneNumber;

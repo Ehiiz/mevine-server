@@ -213,8 +213,6 @@ export class QuidaxConsumerService extends WorkerHost {
   private async processPaymentWalletGeneration(
     addressData: WalletGeneratedData,
   ) {
-    console.log('I enter here at least');
-    this.logger.log('I ran into here');
     this.logger.log(
       `The address ${addressData.currency} : ${addressData.address} successfully generated for ${addressData.user.email} `,
     );
@@ -230,7 +228,7 @@ export class QuidaxConsumerService extends WorkerHost {
     }
 
     const user = await this.databaseService.users.findOne({
-      quidax: addressData.user.id,
+      quidaxId: addressData.user.id,
     });
 
     if (!user) {
