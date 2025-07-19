@@ -27,6 +27,11 @@ import { CreateSubAccountQuidaxEvent } from 'src/modules/providers/crypto/quidax
 @Injectable()
 export class UserAuthService {
   // private secret: string;
+
+  private readonly testBVN: string;
+  private readonly testPreviousAccount: string;
+  private readonly testDateOfBirth: string;
+  private readonly testENV: boolean = true;
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly jwtService: JwtService,
@@ -36,6 +41,10 @@ export class UserAuthService {
     private readonly vfdService: VFDService,
     private readonly logger: WinstonNestJSLogger,
   ) {
+    this.testBVN = '22222222261';
+    this.testENV = true;
+    this.testDateOfBirth = '05-Apr-1994';
+    this.testPreviousAccount = '1001660487';
     this.logger.setContext(UserAuthService.name);
     // this.secret = this.configService.get<string>('JWT_SECRET')!;
   }
@@ -192,11 +201,13 @@ export class UserAuthService {
 
       const { data } = await this.vfdService.createWalletNoConsent(
         {
-          bvn: body.bvn,
-          dateOfBirth: body.dateOfBirth,
+          bvn: this.testENV ? this.testBVN : body.bvn,
+          dateOfBirth: this.testENV ? this.testDateOfBirth : body.dateOfBirth,
         },
         false,
-        { previousAccountNo: '1001660487' },
+        this.testENV
+          ? { previousAccountNo: this.testPreviousAccount }
+          : undefined,
       );
       if (!body.user.bankDetails) {
         body.user.bankDetails = {

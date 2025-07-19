@@ -44,7 +44,7 @@ import { ServiceDecorator } from 'src/core/decorators/auth.decorator';
 @ApiTags('Admin Transactions')
 @Controller('')
 @ServiceDecorator(WebServiceTypeEnum.ADMIN)
-//@UseGuards(AuthGuard) // All routes in this controller require JWT authentication for admins
+@UseGuards(AuthGuard) // All routes in this controller require JWT authentication for admins
 @ApiBearerAuth() // Indicates that these endpoints require a bearer token
 export class AdminTransactionController {
   constructor(
