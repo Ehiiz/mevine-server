@@ -201,7 +201,8 @@ export class QuidaxConsumerService extends WorkerHost {
   private async processPaymentWalletGeneration(
     addressData: WalletGeneratedData,
   ) {
-    this.logger.debug(
+    this.logger.log('I ran into here');
+    this.logger.log(
       `The address ${addressData.currency} : ${addressData.address} successfully generated for ${addressData.user.email} `,
     );
 
@@ -209,7 +210,7 @@ export class QuidaxConsumerService extends WorkerHost {
 
     // Validate if the currency is a known blockchain
     if (!Object.values(BlockchainEnum).includes(currency)) {
-      this.logger.warn(
+      this.logger.log(
         `Received unknown currency '${currency}' from webhook. Cannot update crypto address.`,
       );
       return;
@@ -220,14 +221,14 @@ export class QuidaxConsumerService extends WorkerHost {
     });
 
     if (!user) {
-      this.logger.debug('User not found');
+      this.logger.log('User not found');
       return;
     }
 
     const existingCryptoDetails = user.cryptoAddresses.get(currency);
 
     if (existingCryptoDetails && existingCryptoDetails.set) {
-      this.logger.debug(
+      this.logger.log(
         `Address for ${currency} is already set for user ${user.email}. Skipping update.`,
       );
       return;
