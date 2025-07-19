@@ -36,7 +36,7 @@ async function bootstrap() {
   // --- Global Filters and Interceptors ---
   app.useGlobalFilters(new HttpExceptionFilter(winstonLogger));
   app.useGlobalInterceptors(
-    new LoggerInterceptor(winstonLogger),
+    new LoggerInterceptor(),
     new TransfomerInterceptor(),
   );
 
