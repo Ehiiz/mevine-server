@@ -38,7 +38,7 @@ export class WebhookService {
 
     try {
       switch (event) {
-        case 'deposit.completed':
+        case 'deposit.successful':
           const depositData =
             webhookPayload.data as unknown as DepositCompletedData;
           const depositEvent = new CreateWithdrawalQuidaxEvent(
@@ -48,7 +48,7 @@ export class WebhookService {
           await this.quidaxProducerService.addQuidaxApiOperation(depositEvent);
           return { message: 'Deposit event processed.' };
 
-        case 'withdrawal.completed':
+        case 'withdrawal.successful':
           const withdrawalData =
             webhookPayload.data as unknown as WithdrawalCompletedData;
 

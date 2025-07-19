@@ -11,6 +11,7 @@ import { ReferralRecord } from './schemas/referral-record.schema';
 import { Notification } from './schemas/notification.schema';
 import { Global } from '@nestjs/common';
 import { UserNotification } from './schemas/user-notification.schema';
+import { CryptoFundTransaction } from './schemas/crypto-fund-transaction.schema';
 
 @Global()
 @Injectable()
@@ -32,6 +33,8 @@ export class DatabaseService {
     private readonly referralRecordModel: Model<ReferralRecord>,
     @InjectModel(UserNotification.name)
     private readonly userNotificationModel: Model<UserNotification>,
+    @InjectModel(CryptoFundTransaction.name)
+    private readonly cryptoFundTransactionModel: Model<CryptoFundTransaction>,
   ) {}
   // Add a getter for the connection
   get connectionInstance(): mongoose.Connection {
@@ -71,5 +74,9 @@ export class DatabaseService {
 
   get userNotifications(): Model<UserNotification> {
     return this.userNotificationModel;
+  }
+
+  get cryptoFundTransactions(): Model<CryptoFundTransaction> {
+    return this.cryptoFundTransactionModel;
   }
 }

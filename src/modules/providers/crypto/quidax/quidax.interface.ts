@@ -121,6 +121,7 @@ export interface CreateWithdrawalPayload {
   fund_uid2?: string;
   transaction_note: string;
   narration?: string;
+  reference?: string;
 }
 
 export interface WithdrawalRecipient {

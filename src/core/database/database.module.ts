@@ -20,6 +20,10 @@ import {
   Notification,
   NotificationSchema,
 } from './schemas/notification.schema';
+import {
+  CryptoFundTransaction,
+  CryptoFundTransactionSchema,
+} from './schemas/crypto-fund-transaction.schema';
 
 @Global()
 @Module({
@@ -44,6 +48,10 @@ import {
       {
         name: Transaction.name,
         schema: TransactionSchema,
+      },
+      {
+        name: CryptoFundTransaction.name,
+        schema: CryptoFundTransactionSchema,
       },
       {
         name: Wallet.name,

@@ -54,3 +54,9 @@ export enum WebServiceTypeEnum {
   ADMIN = 'ADMIN',
   USER = 'USER',
 }
+
+export enum CryptoSettlementStatusEnum {
+  PENDING = 'PENDING',
+  SETTLED = 'SETTLED',
+  FAILED = 'FAILED',
+}

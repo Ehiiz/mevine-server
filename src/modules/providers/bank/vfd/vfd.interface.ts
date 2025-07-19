@@ -120,6 +120,7 @@ export interface TransferRequest {
   remark: string;
   transferType: 'intra' | 'inter';
   reference: string; // Unique, prefixed with wallet name
+  source?: boolean;
 }
 
 export interface TransferResponseData {

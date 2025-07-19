@@ -323,13 +323,21 @@ export class VFDService {
    * The `signature` field must be correctly generated externally as per documentation.
    */
   async transferFunds(requestBody: TransferRequest): Promise<TransferResponse> {
-    const urlPath = this.buildUrlPath(VFDUrls.WALLET_TRANSFER);
+    const { source, ...request } = requestBody;
+    let urlPath: string;
+    if (source)
+      urlPath = this.buildUrlPath(VFDUrls.WALLET_TRANSFER, {
+        source: 'single',
+      });
+    else {
+      urlPath = this.buildUrlPath(VFDUrls.WALLET_TRANSFER);
+    }
     this.logger.debug(
       `Initiating transfer to: ${requestBody.toAccount} (${requestBody.transferType}) using path: ${urlPath}`,
     );
 
     const { data } = await firstValueFrom(
-      this.walletsHttpService.post<TransferResponse>(urlPath, requestBody).pipe(
+      this.walletsHttpService.post<TransferResponse>(urlPath, request).pipe(
         // Removed headers
         catchError((error: AxiosError) =>
           this.handleError(error, 'transferFunds'),

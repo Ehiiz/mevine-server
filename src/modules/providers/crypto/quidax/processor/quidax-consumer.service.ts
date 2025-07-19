@@ -23,7 +23,10 @@ import { QuidaxService } from '../quidax.service';
 import {
   BaseQuidaxEvent,
   CreateSubAccountQuidaxEvent,
+  CreateUserCreditQuidaxEvent,
+  CreateWithdrawalQuidaxEvent,
   QuidaxEventsEnum,
+  UpdateUserWalletQuidaxEvent,
 } from './quidax.utils';
 import { BlockchainEnum } from 'src/core/interfaces/user.interface';
 import { de, th } from '@faker-js/faker/.';
@@ -40,7 +43,10 @@ import {
 import { UserDocument } from 'src/core/database/schemas/user.schema';
 import { TransactionDocument } from 'src/core/database/schemas/transaction.schema';
 import mongoose from 'mongoose';
-import { ITransferKey } from 'src/core/interfaces/shared.interface';
+import {
+  CryptoSettlementStatusEnum,
+  ITransferKey,
+} from 'src/core/interfaces/shared.interface';
 import { InitiateTransferEvent } from 'src/modules/providers/bank/vfd/processor/vfd.utils';
 import {
   CryptoFeesResponseDto,
@@ -110,25 +116,23 @@ export class QuidaxConsumerService extends WorkerHost {
       case QuidaxEventsEnum.CREATE_SUB_ACCOUNT:
         const formattedEvent = event as unknown as CreateSubAccountQuidaxEvent;
 
-        const subAccount = await this.processSubAccountCreation(
-          formattedEvent.data,
-        );
+        await this.processSubAccountCreation(formattedEvent.data);
         this.logger.log(`Processing job: ${job.name}`);
         break;
 
       case QuidaxEventsEnum.UPDATE_USER_WALLET:
-        const userWalletEvent = event as unknown as WalletGeneratedData;
-        await this.processPaymentWalletGeneration(userWalletEvent);
+        const userWalletEvent = event as unknown as UpdateUserWalletQuidaxEvent;
+        await this.processPaymentWalletGeneration(userWalletEvent.data);
         break;
 
       case QuidaxEventsEnum.DEPOSIT_COMPLETED:
-        const depositEvent = event as unknown as DepositCompletedData;
-        await this.processDeposit(depositEvent);
+        const depositEvent = event as unknown as CreateWithdrawalQuidaxEvent;
+        await this.processDeposit(depositEvent.data);
         break;
 
       case QuidaxEventsEnum.INITIATE_TRANSFER:
-        const withdrawalEvent = event as unknown as WithdrawalCompletedData;
-        await this.processWalletTransfer(withdrawalEvent);
+        const withdrawalEvent = event as unknown as CreateUserCreditQuidaxEvent;
+        await this.processWalletTransfer(withdrawalEvent.data);
         break;
     }
 
@@ -249,7 +253,7 @@ export class QuidaxConsumerService extends WorkerHost {
     this.logger.log(
       `Handling deposit.completed event for ID: ${depositData.id}`,
     );
-    if (depositData.status === 'completed') {
+    if (depositData.status === 'accepted') {
       this.logger.log(
         `Deposit completed for user ${depositData!.user!.id} with amount ${depositData.amount} ${depositData.currency}`,
       );
@@ -260,6 +264,7 @@ export class QuidaxConsumerService extends WorkerHost {
         transaction_note: `Deposit completed for user ${depositData.user.id}`,
         narration: `Automated withdrawal for deposit ${depositData.id}`,
         fund_uid: this.platformQuidaxId, // Pass if withdrawal API requires it
+        reference: `MEV-DEPOSIT-${new Date().toISOString()}`,
       };
 
       const user = await this.databaseService.users.findOne({
@@ -278,6 +283,15 @@ export class QuidaxConsumerService extends WorkerHost {
       }
 
       try {
+        await this.databaseService.cryptoFundTransactions.create({
+          senderId: depositData.user!.id,
+          senderWalletAddress: depositData.wallet.deposit_address,
+          destinationWalletAddress: this.platformQuidaxId,
+          currency: withdrawalPayload.currency,
+          amount: withdrawalPayload.amount,
+          reference: withdrawalPayload.reference,
+        });
+
         const withdrawalResult = await this.quidaxService.createWithdrawal(
           depositData.user.id!,
           withdrawalPayload,
@@ -317,16 +331,29 @@ export class QuidaxConsumerService extends WorkerHost {
     );
 
     // Only proceed if the deposit is in a 'completed' or 'accepted' state
-    if (
-      depositData.status !== 'completed' &&
-      depositData.status !== 'accepted'
-    ) {
+    if (depositData.status.toLowerCase() !== 'done') {
       this.logger.log(
         `Deposit event ${depositData.id} is not 'completed' or 'accepted'. Status: ${depositData.status}. Skipping transfer.`,
       );
       await session.endSession();
       return;
     }
+
+    const cryptoFund =
+      await this.databaseService.cryptoFundTransactions.findOne({
+        reference: depositData.reference,
+      });
+
+    if (!cryptoFund) {
+      this.logger.error(
+        `Transaction: ${depositData.reference} not found for transfer. Aborting transaction.`,
+      );
+      await session.endSession();
+      return;
+    }
+
+    cryptoFund.settlementStatus = CryptoSettlementStatusEnum.SETTLED;
+    await cryptoFund.save({ session });
 
     const user = await this.databaseService.users.findOne({
       quidaxId: depositData.user?.id,
@@ -545,6 +572,7 @@ export class QuidaxConsumerService extends WorkerHost {
         reference: `MEV-${new Date().getTime()}-${user._id.toString().substring(0, 8)}`, // More unique reference
         toClientId: recipientDetails.clientId,
         toSavingsId: recipientDetails.account.id,
+        source: true,
         ...(recipientDetails.bvn && { toBvn: recipientDetails.bvn }),
       };
 

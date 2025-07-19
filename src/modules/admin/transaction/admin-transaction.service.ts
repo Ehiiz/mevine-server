@@ -89,6 +89,7 @@ export class AdminTransactionService {
       const { data: newBalance } = await this.vfdService.getAccountBalance(
         body.accountNo,
       );
+
       return {
         previousBalance: previousBalance!.accountBalance,
         accountNumber: body.accountNo,
