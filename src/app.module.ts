@@ -218,6 +218,8 @@ import { VFDQueueModule } from './modules/providers/bank/vfd/processor/vfd-queue
     QuidaxModule,
     WebhookModule,
     QuidaxQueueModule,
+    WinstonModule,
+    LoggerModule,
     ...(process.env.NODE_ENV === 'development' ? [SeedModule] : []),
   ],
   controllers: [AppController],

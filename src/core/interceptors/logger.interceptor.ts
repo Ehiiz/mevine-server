@@ -3,29 +3,39 @@ import {
   ExecutionContext,
   Inject,
   Injectable,
-  Logger,
   NestInterceptor,
 } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Observable, tap } from 'rxjs';
+import { Logger } from 'winston';
 
 @Injectable()
 export class LoggerInterceptor implements NestInterceptor {
-  private readonly logger = new Logger(LoggerInterceptor.name);
-  constructor() {} // @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
+  constructor(
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
+  ) {}
+
   intercept(
     context: ExecutionContext,
     next: CallHandler<any>,
-  ): Observable<any> {
+  ): Observable<any> | Promise<Observable<any>> {
+    const date = new Date();
+    const now = date.getTime();
     const request = context.switchToHttp().getRequest();
-    const method = request.method;
-    const url = request.url;
-    this.logger.log(`Accessing the url ${url} via a ${method} METHOD`);
+    const [url, method] = [request.url, request.method];
 
-    const now = Date.now();
+    // Use Winston logger with your custom 'log' level
+    this.logger.log('info', `Accessing ${method} ${url} at ${date}`);
 
     return next
       .handle()
-      .pipe(tap(() => this.logger.log(`After.... ${Date.now() - now}ms`)));
+      .pipe(
+        tap(() =>
+          this.logger.log(
+            'info',
+            `Request completed in ${Date.now() - now} ms`,
+          ),
+        ),
+      );
   }
 }
