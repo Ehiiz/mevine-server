@@ -8,6 +8,7 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  Post,
 } from '@nestjs/common';
 import { AdminTransactionService } from './admin-transaction.service';
 
@@ -35,6 +36,7 @@ import {
 import {
   FetchAllAdminTransactionsDto,
   FetchAnAdminTransactionParamDto,
+  SimulateCreditDto,
   UpdateAdminTransactionStatusDto,
 } from './admin-transaction.validator';
 import { ServiceDecorator } from 'src/core/decorators/auth.decorator';
@@ -42,7 +44,7 @@ import { ServiceDecorator } from 'src/core/decorators/auth.decorator';
 @ApiTags('Admin Transactions')
 @Controller('')
 @ServiceDecorator(WebServiceTypeEnum.ADMIN)
-@UseGuards(AuthGuard) // All routes in this controller require JWT authentication for admins
+//@UseGuards(AuthGuard) // All routes in this controller require JWT authentication for admins
 @ApiBearerAuth() // Indicates that these endpoints require a bearer token
 export class AdminTransactionController {
   constructor(
@@ -277,21 +279,6 @@ export class AdminTransactionController {
       },
     },
   })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Transaction not found.',
-    type: ErrorResponseDto,
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: 'Unauthorized.',
-    type: ErrorResponseDto,
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Invalid transaction ID format or invalid status.',
-    type: ErrorResponseDto,
-  })
   async updateATransactionStatus(
     @Param() params: FetchAnAdminTransactionParamDto, // Re-use ID param DTO
     @Body() body: UpdateAdminTransactionStatusDto,
@@ -305,6 +292,66 @@ export class AdminTransactionController {
       return {
         message: 'Transaction status updated successfully.',
         data: { transaction },
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @Post('simulate-credit')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Simulate credit to a user account',
+  })
+  @ApiBody({ type: SimulateCreditDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Account balance updated successfully.',
+    content: {
+      'application/json': {
+        schema: {
+          type: 'object',
+          properties: {
+            message: {
+              type: 'string',
+              example: 'Account balance updated successfully',
+            },
+            data: {
+              type: 'object',
+              properties: {
+                previousBalance: {
+                  type: 'string',
+                  example: '2000',
+                },
+                newBalance: {
+                  type: 'string',
+                  example: '20000',
+                },
+                accountNumber: {
+                  type: 'string',
+                  example: '208976511212',
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  })
+  async simulateCredit(@Body() body: SimulateCreditDto): Promise<{
+    message: string;
+    data: {
+      previousBalance: string;
+      newBalance: string;
+      accountNumber: string;
+    };
+  }> {
+    try {
+      const data =
+        await this.adminTransactionService.simulateCreditAccount(body);
+      return {
+        message: 'Transaction status updated successfully.',
+        data,
       };
     } catch (error) {
       throw error;

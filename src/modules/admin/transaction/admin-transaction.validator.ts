@@ -7,6 +7,8 @@ import {
   IsEnum,
   IsMongoId,
   IsDateString,
+  IsNotEmpty,
+  Matches,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import {
@@ -138,6 +140,84 @@ export class UpdateAdminTransactionStatusDto {
     message: `Status must be one of: ${Object.values(TransactionStatusEnum).join(', ')}`,
   })
   status: TransactionStatusEnum;
+}
+
+export class SimulateCreditDto {
+  /**
+   * The amount of the credit transaction.
+   * This should be a string representation of a number.
+   * @example "8000"
+   */
+  @ApiProperty({
+    description: 'The amount of the credit transaction (as a string).',
+    example: '8000',
+    type: String,
+  })
+  @IsString()
+  @IsNotEmpty()
+  // Optional: Add a regex to ensure it's a valid number string if needed
+  @Matches(/^\d+(\.\d{1,2})?$/, {
+    message: 'Amount must be a valid number string',
+  })
+  amount: string;
+
+  /**
+   * The account number of the recipient (the account being credited).
+   * @example "1003500000"
+   */
+  @ApiProperty({
+    description: 'The account number of the recipient.',
+    example: '1003500000',
+    type: String,
+  })
+  @IsString()
+  @IsNotEmpty()
+  accountNo: string;
+
+  /**
+   * The account number of the sender.
+   * Defaults to "5050104070" if not provided in the request.
+   * @example "5050104070"
+   */
+  @ApiProperty({
+    description: 'The account number of the sender.',
+    example: '5050104070',
+    type: String,
+    required: false, // Indicates it's optional in the request body
+  })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty() // Still validate if provided
+  senderAccountNo?: string; // Made optional with '?'
+
+  /**
+   * The bank code of the sender's bank.
+   * Defaults to "000002" if not provided in the request.
+   * @example "000002"
+   */
+  @ApiProperty({
+    description: "The bank code of the sender's bank.",
+    example: '000002',
+    type: String,
+    required: false, // Indicates it's optional in the request body
+  })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty() // Still validate if provided
+  senderBank?: string; // Made optional with '?'
+
+  /**
+   * A narration or description for the sender's transaction.
+   * @example "Test credit"
+   */
+  @ApiProperty({
+    description: "A narration or description for the sender's transaction.",
+    example: 'Test credit',
+    type: String,
+  })
+  @IsString()
+  @IsNotEmpty()
+  senderNarration: string;
 }
 
 // Re-using Transaction structure for response definition (from user-transaction.dto.ts or redefine if path differs)
