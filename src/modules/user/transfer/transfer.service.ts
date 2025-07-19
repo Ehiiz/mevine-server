@@ -39,6 +39,7 @@ import {
   FeeRange,
 } from 'src/modules/providers/crypto/quidax/quidax.interface';
 import { CryptoFeesResponseDto, QuidaxRawFeeData } from './transfer.validator';
+import { WinstonNestJSLogger } from 'src/core/logger/winston/winston-nestjs-logger.service';
 
 const IN_HOUSE_FEES: { [key: string]: number } = {
   btc: 0.00005, // e.g., 5,000 satoshis
@@ -60,13 +61,15 @@ const MEVINE_FEE_PERCENTAGE = 0.1; // 10% additional fee
 
 @Injectable()
 export class UserTransferService {
-  private readonly logger = new Logger(UserTransferService.name);
   constructor(
     private readonly bankService: VFDService,
     private readonly databaseService: DatabaseService,
     private readonly bcryptService: BcryptService,
     private readonly quidaxService: QuidaxService,
-  ) {}
+    private readonly logger: WinstonNestJSLogger,
+  ) {
+    this.logger.setContext(UserTransferService.name);
+  }
 
   private getNetworkFeeForMinimumDeposit(
     feeData: CryptoWithdrawalFees,
@@ -153,8 +156,6 @@ export class UserTransferService {
         minDepositBasedOnFees,
       );
 
-      await this.quidaxService.getCryptoWithdrawalFees(lowerCaseCurrency);
-
       // Construct the response DTO with all calculated fields
       const responseDto: CryptoFeesResponseDto = {
         type: quidaxFeeData.type,
@@ -169,11 +170,11 @@ export class UserTransferService {
 
       const quotation = await this.quidaxService.temporarySwapQuotation('me', {
         from_currency: lowerCaseCurrency,
-        to_currency: 'NGN',
-        from_amount: responseDto.minimumDepositRequiredCrypto.toFixed(),
+        to_currency: 'ngn',
+        from_amount: minimumDepositRequiredCrypto.toFixed(6),
       });
 
-      responseDto.swapAmount = quotation.quoted_price;
+      responseDto.swapAmount = quotation.to_amount;
 
       return responseDto;
     } catch (error) {

@@ -46,6 +46,7 @@ import {
   CryptoFeesResponseDto,
   QuidaxRawFeeData,
 } from 'src/modules/user/transfer/transfer.validator';
+import { WinstonNestJSLogger } from 'src/core/logger/winston/winston-nestjs-logger.service';
 
 const IN_HOUSE_FEES: { [key: string]: number } = {
   btc: 0.00005, // e.g., 5,000 satoshis
@@ -68,7 +69,6 @@ const MEVINE_FEE_PERCENTAGE = 0.1; // 10% additional fee
 @Injectable()
 @Processor('quidax-process') // This processor will handle jobs from 'product-stats' queue
 export class QuidaxConsumerService extends WorkerHost {
-  private readonly logger = new Logger(QuidaxConsumerService.name);
   private readonly platformBVN: string;
   private readonly platformClientId: string;
   private readonly platformClient: string;
@@ -82,6 +82,7 @@ export class QuidaxConsumerService extends WorkerHost {
     private readonly vfdProducerService: VfdProducerService,
     private readonly bankService: VFDService,
     private readonly configService: ConfigService,
+    private readonly logger: WinstonNestJSLogger,
   ) {
     super();
 
@@ -97,16 +98,18 @@ export class QuidaxConsumerService extends WorkerHost {
       this.configService.get<string>('PLATFORM_ACCOUNT_NUMBER') || '';
     this.platformQuidaxId =
       this.configService.get<string>('PLATFORM_QUIDAX_ID') || '';
+    this.logger.setContext(QuidaxConsumerService.name);
     // Log initialization for debugging
     this.logger.log('QuidaxConsumerService initialized with platform config');
   }
 
   async process(job: Job<BaseQuidaxEvent, any, string>): Promise<any> {
-    const event = (job.data as unknown as any).event as BaseQuidaxEvent;
+    const event = job.data as unknown as BaseQuidaxEvent;
 
     switch (event.requestName) {
       case QuidaxEventsEnum.CREATE_SUB_ACCOUNT:
         const formattedEvent = event as unknown as CreateSubAccountQuidaxEvent;
+
         const subAccount = await this.processSubAccountCreation(
           formattedEvent.data,
         );
@@ -141,7 +144,7 @@ export class QuidaxConsumerService extends WorkerHost {
   onFailed(job: Job<BaseQuidaxEvent, any, string>, error: Error) {
     this.logger.error(
       `Failed quidax api job: ${job.name} for ${(job.data as unknown as any).event.email}`,
-      error,
+      error.stack,
     );
   }
 
@@ -153,40 +156,50 @@ export class QuidaxConsumerService extends WorkerHost {
   }
 
   private async processSubAccountCreation(body: CreateSubAccountPayload) {
-    const { id: quidaxId } = await this.quidaxService.createSubAccount(body);
+    try {
+      const { id: quidaxId } = await this.quidaxService.createSubAccount(body);
+      this.logger.log(
+        `New user : ${body.email} successfully created subaccount with id : ${quidaxId}`,
+      );
+      const user = await this.databaseService.users.findOne({
+        email: body.email,
+      });
 
-    const user = await this.databaseService.users.findOne({ quidaxId });
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+      user.quidaxId = quidaxId;
 
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-    user.quidaxId = quidaxId;
+      await user.save();
 
-    await user.save();
+      const supportedCurrencies = ['usdt', 'trx', 'btc', 'eth', 'sol'];
 
-    const supportedCurrencies = ['usdt', 'trx', 'btc', 'eth', 'sol'];
-
-    // Create all cryptocurrency wallets concurrently
-    const walletPromises = supportedCurrencies.map((currency) =>
-      this.quidaxService.createPaymentAddressForCryptocurrency(
-        quidaxId,
-        currency,
-        {
-          user_id: quidaxId,
+      // Create all cryptocurrency wallets concurrently
+      const walletPromises = supportedCurrencies.map((currency) =>
+        this.quidaxService.createPaymentAddressForCryptocurrency(
+          quidaxId,
           currency,
-        },
-      ),
-    );
+          {
+            user_id: quidaxId,
+            currency,
+          },
+        ),
+      );
 
-    const walletResults = await Promise.all(walletPromises);
-
-    return;
+      await Promise.all(walletPromises);
+      this.logger.log('Successfully sent wallet creation requests');
+      return;
+    } catch (error) {
+      this.logger.fatal(error);
+    }
   }
 
   private async processPaymentWalletGeneration(
     addressData: WalletGeneratedData,
   ) {
-    this.logger.debug(addressData);
+    this.logger.debug(
+      `The address ${addressData.currency} : ${addressData.address} successfully generated for ${addressData.user.email} `,
+    );
 
     const currency = addressData.currency.toLowerCase() as BlockchainEnum; // Ensure lowercase and cast to enum
 
@@ -269,7 +282,7 @@ export class QuidaxConsumerService extends WorkerHost {
           depositData.user.id!,
           withdrawalPayload,
         );
-        this.logger.log(
+        this.logger.info(
           'Automated withdrawal initiated successfully:',
           withdrawalResult,
         );
@@ -539,7 +552,7 @@ export class QuidaxConsumerService extends WorkerHost {
 
       const transferResult =
         await this.vfdProducerService.addVfdApiOperation(event);
-      this.logger.log(
+      this.logger.info(
         'Automated NGN transfer initiated successfully:',
         transferResult,
       );

@@ -4,11 +4,16 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { BaseQuidaxEvent } from './quidax.utils';
+import { WinstonNestJSLogger } from 'src/core/logger/winston/winston-nestjs-logger.service';
 
 @Injectable()
 export class QuidaxProducerService {
-  private readonly logger = new Logger(QuidaxProducerService.name);
-  constructor(@InjectQueue('quidax-process') private quidaxQueue: Queue) {}
+  constructor(
+    @InjectQueue('quidax-process') private quidaxQueue: Queue,
+    private readonly logger: WinstonNestJSLogger,
+  ) {
+    this.logger.setContext(QuidaxProducerService.name);
+  }
 
   /**
    * Adds a job to update product sales statistics after an order is created.
@@ -18,7 +23,7 @@ export class QuidaxProducerService {
     try {
       const { requestName, ...data } = event;
 
-      await this.quidaxQueue.add(event.requestName, data, {
+      await this.quidaxQueue.add(event.requestName, event, {
         attempts: 3, // Retry up to 3 times if job fails
         backoff: {
           type: 'exponential',

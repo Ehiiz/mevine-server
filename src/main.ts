@@ -55,9 +55,16 @@ async function bootstrap() {
     },
   });
 
+  const quidaxQueue = new Queue('quidax-process', {
+    connection: {
+      host: process.env.REDIS_HOST || 'localhost', // Get from env or default
+      port: parseInt(process.env.REDIS_PORT || '6379', 10), // Get from env or default
+    },
+  });
+
   // Create the Bull Board instance and register your queue(s)
   createBullBoard({
-    queues: [new BullMQAdapter(emailQueue)],
+    queues: [new BullMQAdapter(emailQueue), new BullMQAdapter(quidaxQueue)],
     serverAdapter,
   });
 

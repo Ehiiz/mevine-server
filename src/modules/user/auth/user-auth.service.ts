@@ -1,3 +1,5 @@
+import { th } from '@faker-js/faker/.';
+import { T } from '@faker-js/faker/dist/airline-BUL6NtOJ';
 import {
   ConflictException,
   Injectable,
@@ -15,8 +17,10 @@ import {
   UserLoginAttemptEvent,
   UserRegisteredEvent,
 } from 'src/core/integrations/emails/email.utils';
+import { WinstonNestJSLogger } from 'src/core/logger/winston/winston-nestjs-logger.service';
 import { BcryptService } from 'src/core/security/bcrypt.service';
 import { generateRandomDigits } from 'src/core/utils/random-generator.util';
+import { VFDService } from 'src/modules/providers/bank/vfd/vfd.service';
 import { QuidaxProducerService } from 'src/modules/providers/crypto/quidax/processor/quidax-producer.service';
 import { CreateSubAccountQuidaxEvent } from 'src/modules/providers/crypto/quidax/processor/quidax.utils';
 
@@ -29,7 +33,10 @@ export class UserAuthService {
     private readonly bcryptService: BcryptService,
     private readonly emailQueueService: EmailQueueService,
     private readonly quidaxProducerService: QuidaxProducerService,
+    private readonly vfdService: VFDService,
+    private readonly logger: WinstonNestJSLogger,
   ) {
+    this.logger.setContext(UserAuthService.name);
     // this.secret = this.configService.get<string>('JWT_SECRET')!;
   }
 
@@ -172,12 +179,35 @@ export class UserAuthService {
     passcode: string;
     phoneNumber: string;
     avatar?: string;
+    bvn?: string;
+    dateOfBirth?: string;
   }): Promise<{ token: string; user: User }> {
     try {
+      if (body.user.accountStatus.completeSetup)
+        throw new UnauthorizedException('Account already setup');
       const hashedPassword = await this.bcryptService.hashPassword(
         body.password,
       );
       const hashedPin = await this.bcryptService.hashPassword(body.passcode);
+
+      const { data } = await this.vfdService.createWalletNoConsent({
+        bvn: body.bvn,
+        dateOfBirth: body.dateOfBirth,
+      });
+      if (!body.user.bankDetails) {
+        body.user.bankDetails = {
+          accountNumber: '',
+          bankName: '',
+          bankCode: '',
+          accountName: '',
+        };
+      }
+
+      // Now safely assign the values
+      body.user.bankDetails.accountNumber = data!.accountNo!;
+      body.user.bankDetails.accountName = data!.accountName!;
+      body.user.bankDetails.bankCode = '999999';
+      body.user.bankDetails.bankName = 'VFD Microfinance Bank';
 
       // Update user fields
       body.user.phoneNumber = body.phoneNumber;
@@ -203,7 +233,6 @@ export class UserAuthService {
           first_name: body.user.firstName,
           last_name: body.user.lastName,
           email: body.user.email,
-          phone_number: body.user.phoneNumber,
         },
         body.user.email,
       );

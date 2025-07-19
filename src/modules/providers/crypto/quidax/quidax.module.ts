@@ -10,9 +10,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       useFactory: async (configService: ConfigService) => ({
         baseURL:
           configService.get<string>('QUIDAX_BASE_URL') ||
-          'https://api.quidax.com/api/v1', // Set baseURL here
-        timeout: configService.get<number>('HTTP_TIMEOUT') || 5000, // Set timeout from .env or default to 5000ms
-        maxRedirects: configService.get<number>('HTTP_MAX_REDIRECTS') || 5, // Set maxRedirects from .env or default to 5
+          'https://app.quidax.io/api/v1', // Set baseURL here
         headers: {
           // Set Authorization and Content-Type headers globally for this HttpService instance
           Authorization: `Bearer ${configService.get<string>('QUIDAX_API_SECRET_KEY')}`,

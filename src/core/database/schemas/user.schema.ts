@@ -94,6 +94,7 @@ export class User implements UserMethods {
       accountNumber: String,
       bankName: String,
       bankCode: String,
+      accountName: String,
     },
   })
   bankDetails: IBankDetails;

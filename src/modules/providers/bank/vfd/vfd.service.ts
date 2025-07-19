@@ -52,6 +52,7 @@ import {
 import { BILLS_HTTP_SERVICE, WALLETS_HTTP_SERVICE } from './vfd.module';
 import { ConfigService } from '@nestjs/config';
 import { ModuleRef } from '@nestjs/core';
+import { WinstonNestJSLogger } from 'src/core/logger/winston/winston-nestjs-logger.service';
 
 @Injectable()
 export class VFDHttpServiceFactory {
@@ -94,15 +95,17 @@ export class VFDHttpServiceFactory {
 
 @Injectable()
 export class VFDService {
-  private readonly logger = new Logger(VFDService.name);
   private readonly walletsHttpService: HttpService;
   private readonly billsHttpService: HttpService;
 
-  constructor(private readonly httpServiceFactory: VFDHttpServiceFactory) {
+  constructor(
+    private readonly httpServiceFactory: VFDHttpServiceFactory,
+    private readonly logger: WinstonNestJSLogger,
+  ) {
     this.walletsHttpService =
       this.httpServiceFactory.createWalletsHttpService();
     this.billsHttpService = this.httpServiceFactory.createBillsHttpService();
-
+    this.logger.setContext(VFDService.name);
     this.logger.log(
       'VFDService initialized with factory-created HttpService instances.',
     );
@@ -139,7 +142,7 @@ export class VFDService {
   private handleError(error: AxiosError, methodName: string): never {
     this.logger.error(
       `Error in ${methodName}:`,
-      error.response?.data || error.message,
+      error.message as unknown as any,
     );
     if (error.response) {
       const apiError: VfdApiErrorResponse = error.response
@@ -250,7 +253,7 @@ export class VFDService {
     }
 
     const urlPath = this.buildUrlPath(endpoint, finalQueryParams);
-    this.logger.debug(
+    this.logger.info(
       `Creating No-Consent Wallet (Corporate: ${isCorporate}) at path: ${urlPath}`,
     );
 
@@ -258,13 +261,12 @@ export class VFDService {
       this.walletsHttpService
         .post<ClientCreationResponse>(urlPath, requestBody)
         .pipe(
-          // Removed headers
-          catchError((error: AxiosError) =>
-            this.handleError(
+          catchError((error: AxiosError) => {
+            return this.handleError(
               error,
               `createWalletNoConsent (${isCorporate ? 'corporate' : 'individual'})`,
-            ),
-          ),
+            );
+          }),
         ),
     );
     return data;

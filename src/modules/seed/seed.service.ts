@@ -156,6 +156,7 @@ export class SeedService implements OnModuleInit {
         accountNumber: faker.finance.accountNumber(10),
         bankName: faker.company.name() + ' Bank',
         bankCode: faker.finance.routingNumber(),
+        accountName: faker.person.fullName(),
       };
 
       // const userCryptoDetails: ICryptoDetails[] = [

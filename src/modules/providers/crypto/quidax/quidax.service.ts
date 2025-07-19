@@ -33,15 +33,17 @@ import {
   TemporarySwapQuotationResponse,
 } from './quidax.interface'; // Import the new interfaces
 import { HttpService } from '@nestjs/axios';
+import { th } from '@faker-js/faker/.';
+import { WinstonNestJSLogger } from 'src/core/logger/winston/winston-nestjs-logger.service';
 
 @Injectable()
 export class QuidaxService {
-  private readonly logger = new Logger(QuidaxService.name);
   // The baseUrl property is no longer needed directly in the service,
   // as it's now configured in the HttpModule itself.
 
   constructor(
     private readonly httpService: HttpService, // HttpService is now pre-configured with baseURL and headers
+    private readonly logger: WinstonNestJSLogger,
   ) {
     // No direct baseUrl or API key check here, as HttpModule.registerAsync handles it.
     // If QUIDAX_API_KEY or QUIDAX_BASE_URL is missing, the HttpModule initialization will likely fail.
@@ -56,20 +58,21 @@ export class QuidaxService {
     data?: any,
   ): Promise<T> {
     try {
+      this.logger.info(data);
       const request: Observable<T> = this.httpService[method](
         url, // baseURL is now implicitly handled by the HttpService instance
         data,
       ).pipe(
-        map(
-          (response: AxiosResponse<QuidaxApiResponse<T>>) => response.data.data,
-        ),
+        map((response: AxiosResponse<QuidaxApiResponse<T>>) => {
+          this.logger.log('Quidax API Response', response!.data!.data as any);
+          return response.data.data;
+        }),
         catchError((error) => {
           this.logger.error(
-            `Quidax API Error for ${url}: ${error.message}`,
-            error.stack,
+            `Quidax API Error for ${url}: ${error.response.data.message}`,
           );
           throw new HttpException(
-            error.response?.data || 'Quidax API request failed',
+            error.response?.data.message || 'Quidax API request failed',
             error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
           );
         }),
@@ -101,7 +104,7 @@ export class QuidaxService {
     payload: CreateSubAccountPayload,
   ): Promise<SubAccount> {
     this.logger.log('Creating sub-account...');
-    return this.makeRequest<SubAccount>('post', '/users', payload);
+    return await this.makeRequest<SubAccount>('post', '/users', payload);
   }
 
   /**
@@ -114,7 +117,7 @@ export class QuidaxService {
     payload: EditSubAccountDetailsPayload,
   ): Promise<SubAccount> {
     this.logger.log(`Editing sub-account ${subAccountId} details...`);
-    return this.makeRequest<SubAccount>(
+    return await this.makeRequest<SubAccount>(
       'put',
       `/users/${subAccountId}`,
       payload,
@@ -126,7 +129,7 @@ export class QuidaxService {
    */
   async fetchAllSubAccounts(): Promise<SubAccount[]> {
     this.logger.log('Fetching all sub-accounts...');
-    return this.makeRequest<SubAccount[]>('get', '/users');
+    return await this.makeRequest<SubAccount[]>('get', '/users');
   }
 
   /**
@@ -135,7 +138,7 @@ export class QuidaxService {
    */
   async fetchDetailsOfSubAccount(subAccountId: string): Promise<SubAccount> {
     this.logger.log(`Fetching details of sub-account ${subAccountId}...`);
-    return this.makeRequest<SubAccount>('get', `/users/${subAccountId}`);
+    return await this.makeRequest<SubAccount>('get', `/users/${subAccountId}`);
   }
 
   /**
@@ -144,7 +147,7 @@ export class QuidaxService {
   async fetchParentAccount(): Promise<any> {
     // Assuming no specific interface for parent account yet
     this.logger.log('Fetching parent account details...');
-    return this.makeRequest('get', '/users/me');
+    return await this.makeRequest('get', '/users/me');
   }
 
   // --- Wallets API ---
@@ -155,7 +158,7 @@ export class QuidaxService {
    */
   async fetchUserWallets(userId: string): Promise<Wallet[]> {
     this.logger.log(`Fetching wallets for user ${userId}...`);
-    return this.makeRequest<Wallet[]>('get', `/users/${userId}/wallets`);
+    return await this.makeRequest<Wallet[]>('get', `/users/${userId}/wallets`);
   }
 
   /**
@@ -165,7 +168,7 @@ export class QuidaxService {
    */
   async fetchUserWallet(userId: string, currency: string): Promise<Wallet> {
     this.logger.log(`Fetching wallet ${currency} for user ${userId}...`);
-    return this.makeRequest<Wallet>(
+    return await this.makeRequest<Wallet>(
       'get',
       `/users/${userId}/wallets/${currency}`,
     );
@@ -181,7 +184,7 @@ export class QuidaxService {
     currency: string,
   ): Promise<PaymentAddress> {
     this.logger.log(`Fetching payment address by ID ${addressId}...`);
-    return this.makeRequest<PaymentAddress>(
+    return await this.makeRequest<PaymentAddress>(
       'get',
       `/users/${userId}/wallets/${currency}/addresses/${addressId}`,
     );
@@ -195,7 +198,7 @@ export class QuidaxService {
     currency: string,
   ): Promise<PaymentAddress> {
     this.logger.log('Fetching a payment addresses...');
-    return this.makeRequest<PaymentAddress>(
+    return await this.makeRequest<PaymentAddress>(
       'get',
       `/users/${userId}/wallets/${currency}/address`,
     );
@@ -209,7 +212,7 @@ export class QuidaxService {
     currency: string,
   ): Promise<PaymentAddress[]> {
     this.logger.log('Fetching all payment addresses...');
-    return this.makeRequest<PaymentAddress[]>(
+    return await this.makeRequest<PaymentAddress[]>(
       'get',
       `/users/${userId}/wallets/${currency}/addresses`,
     );
@@ -225,7 +228,7 @@ export class QuidaxService {
     payload: CreatePaymentAddressPayload,
   ): Promise<PaymentAddress> {
     this.logger.log('Creating payment address for cryptocurrency...');
-    return this.makeRequest<PaymentAddress>(
+    return await this.makeRequest<PaymentAddress>(
       'post',
       `/users/${userId}/wallets/${currency}/addresses`,
       payload,
@@ -260,7 +263,10 @@ export class QuidaxService {
     this.logger.log(
       `Validating address ${address} for currency ${currency}...`,
     );
-    return this.makeRequest('get', `/${currency}/${address}/validate_address`);
+    return await this.makeRequest(
+      'get',
+      `/${currency}/${address}/validate_address`,
+    );
   }
 
   // --- Withdrawals API ---
@@ -274,7 +280,7 @@ export class QuidaxService {
     state: string,
   ): Promise<Withdrawal[]> {
     this.logger.log('Fetching all withdrawals...');
-    return this.makeRequest<Withdrawal[]>(
+    return await this.makeRequest<Withdrawal[]>(
       'get',
       `/users/${userId}/withdraws?currency=${currency}&state=${state}`,
     );
@@ -287,7 +293,7 @@ export class QuidaxService {
   async cancelWithdrawal(withdrawalId: string): Promise<any> {
     // Return type might be specific (e.g., { success: boolean })
     this.logger.log(`Cancelling withdrawal ${withdrawalId}...`);
-    return this.makeRequest(
+    return await this.makeRequest(
       'post',
       `/users/me/withdraws/${withdrawalId}/cancel`,
     );
@@ -302,7 +308,7 @@ export class QuidaxService {
     userId: string,
   ): Promise<Withdrawal> {
     this.logger.log(`Fetching detail of withdrawal ${withdrawalId}...`);
-    return this.makeRequest<Withdrawal>(
+    return await this.makeRequest<Withdrawal>(
       'get',
       `/users/${userId}/withdraws/${withdrawalId}`,
     );
@@ -317,7 +323,7 @@ export class QuidaxService {
     payload: CreateWithdrawalPayload,
   ): Promise<Withdrawal> {
     this.logger.log('Creating withdrawal...');
-    return this.makeRequest<Withdrawal>(
+    return await this.makeRequest<Withdrawal>(
       'post',
       `/users/${userId}/withdraws`,
       payload,
@@ -333,7 +339,7 @@ export class QuidaxService {
     userId: string,
   ): Promise<Withdrawal> {
     this.logger.log(`Fetching withdrawal by reference ${reference}...`);
-    return this.makeRequest<Withdrawal>(
+    return await this.makeRequest<Withdrawal>(
       'get',
       `/users/${userId}/withdraws/reference/${reference}`,
     );
@@ -346,7 +352,7 @@ export class QuidaxService {
    */
   async listAllMarkets(): Promise<Market[]> {
     this.logger.log('Listing all markets...');
-    return this.makeRequest<Market[]>('get', '/markets');
+    return await this.makeRequest<Market[]>('get', '/markets');
   }
 
   /**
@@ -354,7 +360,7 @@ export class QuidaxService {
    */
   async listMarketTickers(): Promise<MarketTicker[]> {
     this.logger.log('Listing market tickers...');
-    return this.makeRequest<MarketTicker[]>('get', '/markets/tickers');
+    return await this.makeRequest<MarketTicker[]>('get', '/markets/tickers');
   }
 
   /**
@@ -363,7 +369,7 @@ export class QuidaxService {
    */
   async fetchAMarketTicker(currency: string): Promise<MarketTicker> {
     this.logger.log(`Fetching market ticker for ${currency}...`);
-    return this.makeRequest<MarketTicker>(
+    return await this.makeRequest<MarketTicker>(
       'get',
       `/markets/tickers/${currency}`,
     );
@@ -376,7 +382,7 @@ export class QuidaxService {
    */
   async fetchKLineForAMarket(marketId: string): Promise<KLineData[]> {
     this.logger.log(`Fetching k-line data for market ${marketId}...`);
-    return this.makeRequest<KLineData[]>('get', `/markets/${marketId}/k`);
+    return await this.makeRequest<KLineData[]>('get', `/markets/${marketId}/k`);
   }
 
   /**
@@ -392,7 +398,7 @@ export class QuidaxService {
     this.logger.log(
       `Fetching k-line data with pending trades for market ${currency}...`,
     );
-    return this.makeRequest<KLineData[]>(
+    return await this.makeRequest<KLineData[]>(
       'get',
       `/markets/${currency}/k_line_with_pending_trades/${tradeId}`,
     );
@@ -408,7 +414,7 @@ export class QuidaxService {
     payload?: { limit?: number },
   ): Promise<OrderBook> {
     this.logger.log(`Fetching order-book items for market ${currency}...`);
-    return this.makeRequest<OrderBook>(
+    return await this.makeRequest<OrderBook>(
       'get',
       `/markets/${currency}/order_book`,
     );
@@ -425,7 +431,7 @@ export class QuidaxService {
   ): Promise<DepthData> {
     this.logger.log(`Fetching depth data for market ${currency}...`);
     const queryString = new URLSearchParams(payload as any).toString();
-    return this.makeRequest<DepthData>(
+    return await this.makeRequest<DepthData>(
       'get',
       `/markets/${currency}/depth?${queryString}`,
     );
@@ -436,7 +442,7 @@ export class QuidaxService {
    */
   async marketsSummary(): Promise<MarketSummary[]> {
     this.logger.log('Fetching markets summary...');
-    return this.makeRequest<MarketSummary[]>('get', '/markets/summary');
+    return await this.makeRequest<MarketSummary[]>('get', '/markets/summary');
   }
 
   // --- Trades API ---
@@ -451,7 +457,7 @@ export class QuidaxService {
     payload?: { limit?: number },
   ): Promise<Trade[]> {
     this.logger.log(`Fetching recent trades for market ${marketpair}...`);
-    return this.makeRequest<Trade[]>('get', `/trades/${marketpair}`);
+    return await this.makeRequest<Trade[]>('get', `/trades/${marketpair}`);
   }
 
   // --- Deposits API ---
@@ -466,7 +472,7 @@ export class QuidaxService {
     this.logger.log('Fetching all deposits...');
     const queryString = new URLSearchParams(payload as any).toString();
 
-    return this.makeRequest<Deposit[]>(
+    return await this.makeRequest<Deposit[]>(
       'get',
       `/users/${userId}/deposits?${queryString}`,
     );
@@ -478,7 +484,7 @@ export class QuidaxService {
    */
   async fetchADeposit(depositId: string, userId: string): Promise<Deposit> {
     this.logger.log(`Fetching deposit ${depositId}...`);
-    return this.makeRequest<Deposit>(
+    return await this.makeRequest<Deposit>(
       'get',
       `/users/${userId}/deposits/${depositId}`,
     );
@@ -489,7 +495,7 @@ export class QuidaxService {
    */
   async fetchDepositsMadeBySubUsers(): Promise<Deposit[]> {
     this.logger.log('Fetching deposits made by sub-users...');
-    return this.makeRequest<Deposit[]>('get', '/users/deposits/all');
+    return await this.makeRequest<Deposit[]>('get', '/users/deposits/all');
   }
 
   // --- Swap API ---
@@ -503,7 +509,7 @@ export class QuidaxService {
     payload: CreateInstantSwapPayload,
   ): Promise<SwapTransaction> {
     this.logger.log('Creating instant swap...');
-    return this.makeRequest<SwapTransaction>(
+    return await this.makeRequest<SwapTransaction>(
       'post',
       `/users/${userId}/swap_quotation`,
       payload,
@@ -520,7 +526,7 @@ export class QuidaxService {
   ): Promise<SwapTransaction> {
     this.logger.log(`Confirming instant swap ${quotationId}...`);
     // Assuming no request body is needed for confirm, or a minimal one
-    return this.makeRequest<SwapTransaction>(
+    return await this.makeRequest<SwapTransaction>(
       'post',
       `/users/${userId}/swap_quotation/$${quotationId}/confirm`,
       {},
@@ -537,7 +543,7 @@ export class QuidaxService {
   ): Promise<SwapTransaction> {
     this.logger.log(`Refreshing instant swap quotation for ${quotationId}...`);
     // Assuming no request body is needed for refresh, or a minimal one
-    return this.makeRequest<SwapTransaction>(
+    return await this.makeRequest<SwapTransaction>(
       'post',
       `/users/${userId}/swap_quotation/$${quotationId}/confirm`,
       {},
@@ -553,7 +559,7 @@ export class QuidaxService {
     swapId: string,
   ): Promise<SwapTransaction> {
     this.logger.log(`Fetching swap transaction ${swapId}...`);
-    return this.makeRequest<SwapTransaction>(
+    return await this.makeRequest<SwapTransaction>(
       'get',
       `/users/${userId}/swap_transactions/${swapId}`,
     );
@@ -564,7 +570,7 @@ export class QuidaxService {
    */
   async getSwapTransactions(userId: string): Promise<SwapTransaction[]> {
     this.logger.log('Getting all swap transactions...');
-    return this.makeRequest<SwapTransaction[]>(
+    return await this.makeRequest<SwapTransaction[]>(
       'get',
       `/users/${userId}/swap_transactions`,
     );
@@ -580,7 +586,7 @@ export class QuidaxService {
   ): Promise<TemporarySwapQuotationResponse> {
     // Return type is likely a quote object, not a full transaction
     this.logger.log('Fetching temporary swap quotation...');
-    return this.makeRequest<TemporarySwapQuotationResponse>(
+    return await this.makeRequest<TemporarySwapQuotationResponse>(
       'post',
       `/users/${userId}/temporary_swap_quotation`,
       payload,
@@ -597,7 +603,7 @@ export class QuidaxService {
     currency: string,
   ): Promise<Beneficiary[]> {
     this.logger.log('Fetching all beneficiaries...');
-    return this.makeRequest<Beneficiary[]>(
+    return await this.makeRequest<Beneficiary[]>(
       'get',
       `users/${userId}/beneficiaries?currency=${currency}`,
     );
@@ -612,7 +618,7 @@ export class QuidaxService {
     payload: CreateBeneficiaryAccountPayload,
   ): Promise<Beneficiary> {
     this.logger.log('Creating a beneficiary account...');
-    return this.makeRequest<Beneficiary>(
+    return await this.makeRequest<Beneficiary>(
       'post',
       `/users/${userId}/beneficiaries`,
       payload,
@@ -628,7 +634,7 @@ export class QuidaxService {
     userId: string,
   ): Promise<Beneficiary> {
     this.logger.log(`Fetching beneficiary account ${beneficiaryId}...`);
-    return this.makeRequest<Beneficiary>(
+    return await this.makeRequest<Beneficiary>(
       'get',
       `/users/${userId}/beneficiaries/${beneficiaryId}`,
     );
@@ -645,7 +651,7 @@ export class QuidaxService {
     payload: EditBeneficiaryAccountPayload,
   ): Promise<Beneficiary> {
     this.logger.log(`Editing beneficiary account ${beneficiaryId}...`);
-    return this.makeRequest<Beneficiary>(
+    return await this.makeRequest<Beneficiary>(
       'put',
       `/users/${userId}/beneficiaries/${beneficiaryId}`,
       payload,
@@ -663,7 +669,7 @@ export class QuidaxService {
     currency: string,
   ): Promise<CryptoWithdrawalFees> {
     this.logger.log(`Getting crypto withdrawal fees for ${currency} amount `);
-    return this.makeRequest<CryptoWithdrawalFees>(
+    return await this.makeRequest<CryptoWithdrawalFees>(
       'get',
       `/fee?currency=${currency}`,
     );

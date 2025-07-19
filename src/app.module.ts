@@ -52,7 +52,7 @@ import { VFDQueueModule } from './modules/providers/bank/vfd/processor/vfd-queue
           secret: secret,
           global: true,
           signOptions: {
-            expiresIn: configService.get<string>('JWT_EXPIRATION') || '7d',
+            expiresIn: configService.get<string>('JWT_EXPIRATION') || '365d',
           },
         };
       },

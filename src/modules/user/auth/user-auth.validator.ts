@@ -7,6 +7,7 @@ import {
   MaxLength,
   Matches,
   IsOptional,
+  IsDateString,
 } from 'class-validator';
 
 // Regex for password validation: At least 8 characters, one uppercase, one lowercase, one number, one special character
@@ -116,6 +117,24 @@ export class CompleteAccountDto {
   @IsOptional()
   @IsString({ message: 'Avatar must be a string (URL)' })
   avatar?: string;
+
+  @ApiProperty({
+    description: 'BVN for account creation',
+    example: '11111111',
+    required: false,
+  })
+  @IsOptional()
+  @IsString({ message: 'Add BVN to complete account setup' })
+  bvn?: string;
+
+  @ApiProperty({
+    description: 'BVN for account creation',
+    example: '11111111',
+    required: false,
+  })
+  @IsOptional()
+  @IsDateString()
+  dateOfBirth?: string;
 }
 
 export class LoginDto {
