@@ -18,7 +18,7 @@ import { ApiBody } from '@nestjs/swagger';
 export class WebhookController {
   constructor(private readonly webhookService: WebhookService) {}
 
-  // @UseGuards(QuidaxGuard)
+  @UseGuards(QuidaxGuard)
   @Post('quidax')
   @SkipTransform()
   @ApiBody({
