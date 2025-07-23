@@ -283,10 +283,22 @@ export class UserAuthService {
         throw new NotFoundException('User not found, Please signup');
       }
 
-      if (!user.accountStatus || user.accountStatus?.completeSetup !== true) {
+      if (!user.accountStatus) {
         throw new NotFoundException(
           'User has not completed account setup, Return to sign up ',
         );
+      }
+
+      if (user.accountStatus?.completeSetup !== true) {
+        throw new NotFoundException(
+          'Account not verified, please return to signup',
+        );
+      }
+
+      if (user.accountStatus?.completeSetup !== true) {
+        return {
+          message: 'Complete account setup',
+        };
       }
 
       const loginCode = generateRandomDigits();
