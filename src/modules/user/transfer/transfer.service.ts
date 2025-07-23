@@ -98,7 +98,10 @@ export class UserTransferService {
     }
   }
 
-  async fetchFees(currency: string): Promise<CryptoFeesResponseDto> {
+  async fetchFees(
+    currency: string,
+    user: UserDocument,
+  ): Promise<CryptoFeesResponseDto> {
     try {
       // Ensure currency is lowercase for consistent mapping with constants
       const lowerCaseCurrency = currency.toLowerCase();
@@ -156,6 +159,17 @@ export class UserTransferService {
         minDepositBasedOnFees,
       );
 
+      const paymentAddress =
+        user.cryptoAddresses.get(lowerCaseCurrency)?.address;
+      if (!paymentAddress) {
+        this.logger.warn(
+          `Payment address not found for currency: ${currency}. Please check user's crypto addresses.`,
+        );
+        throw new NotFoundException(
+          `Payment address for ${currency} not found in user's crypto addresses.`,
+        );
+      }
+
       // Construct the response DTO with all calculated fields
       const responseDto: CryptoFeesResponseDto = {
         type: quidaxFeeData.type,
@@ -166,6 +180,7 @@ export class UserTransferService {
         minimumDepositRequiredCrypto: parseFloat(
           minimumDepositRequiredCrypto.toFixed(8),
         ),
+        paymentAddress: paymentAddress,
       };
 
       const quotation = await this.quidaxService.temporarySwapQuotation('me', {

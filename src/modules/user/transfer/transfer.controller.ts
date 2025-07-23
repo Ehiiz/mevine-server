@@ -113,9 +113,11 @@ export class UserTransferController {
   })
   async fetchFees(
     @Param('currency') currency: string,
+    @Req() request: Request,
   ): Promise<{ message: string; data: CryptoFeesResponseDto }> {
     try {
-      const data = await this.userTransferService.fetchFees(currency);
+      const user = request.user; // Ensure user is typed correctly
+      const data = await this.userTransferService.fetchFees(currency, user);
       // The service already returns the DTO, so just return it directly
       return { message: 'Successfully fetched fees details', data };
     } catch (error) {

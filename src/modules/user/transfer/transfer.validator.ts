@@ -331,6 +331,13 @@ export class CryptoFeesResponseDto {
     description: 'The naira equivalent of the mimimum deposit',
   })
   swapAmount?: string;
+
+  @ApiProperty({
+    type: 'string',
+    description: 'The payment address for the cryptocurrency',
+    example: '0x1234567890abcdef1234567890abcdef12345678',
+  })
+  paymentAddress?: string;
 }
 
 export class BillerCategoryResponse implements BillerCategory {
