@@ -16,7 +16,8 @@ export class BcryptService {
     password: string;
     hashedPassword: string;
   }): Promise<boolean> {
+    console.log(body);
     const { password, hashedPassword } = body;
-    return bcrypt.compare(password, hashedPassword);
+    return await bcrypt.compare(password, hashedPassword);
   }
 }

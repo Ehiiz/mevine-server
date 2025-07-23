@@ -352,10 +352,10 @@ export class UserAuthController {
   ): Promise<{ message: string; data: { token: string; user: User } }> {
     try {
       const { token, user } = await this.userAuthService.verifyLoginCode(body);
-      // Actual runtime response
+
       return {
         message: 'Login successful.',
-        data: { token, user: { ...user, wallet: user.wallet } },
+        data: { token, user },
       };
     } catch (error) {
       throw error;

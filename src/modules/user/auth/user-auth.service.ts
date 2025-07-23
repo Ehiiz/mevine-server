@@ -288,8 +288,9 @@ export class UserAuthService {
 
       const loginCode = generateRandomDigits();
 
-      user.auth.loginVerificationToken =
-        await this.bcryptService.hashPassword(loginCode);
+      const hashedCode = await this.bcryptService.hashPassword(loginCode);
+
+      user.auth.loginVerificationToken = hashedCode;
       user.auth.loginTokenExpiration = new Date();
       user.auth.loginTokenExpiration.setMinutes(
         user.auth.loginTokenExpiration.getMinutes() + 10,
@@ -344,6 +345,7 @@ export class UserAuthService {
 
       return { token, user: user.toObject() as User };
     } catch (error) {
+      this.logger.error(error);
       throw error;
     }
   }
