@@ -279,6 +279,7 @@ export class UserAuthService {
         email: body.email,
       });
 
+      let message: string = 'Email sent to account';
       if (!user) {
         throw new NotFoundException('User not found, Please signup');
       }
@@ -290,15 +291,7 @@ export class UserAuthService {
       }
 
       if (user.accountStatus?.completeSetup !== true) {
-        throw new NotFoundException(
-          'Account not verified, please return to signup',
-        );
-      }
-
-      if (user.accountStatus?.completeSetup !== true) {
-        return {
-          message: 'Complete account setup',
-        };
+        message = 'Complete account setup';
       }
 
       const loginCode = generateRandomDigits();
@@ -317,7 +310,7 @@ export class UserAuthService {
 
       await this.emailQueueService.handleEmailEvent(event);
 
-      return { message: 'Email sent to account' };
+      return { message: message };
     } catch (error) {
       throw error;
     }
