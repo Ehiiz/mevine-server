@@ -1,6 +1,7 @@
 import {
   CreateSubAccountPayload,
   DepositCompletedData,
+  DepositExternalCompletedData,
   WalletGeneratedData,
   WithdrawalCompletedData,
 } from '../quidax.interface';
@@ -38,8 +39,8 @@ export class UpdateUserWalletQuidaxEvent extends BaseQuidaxEvent {
 }
 
 export class CreateWithdrawalQuidaxEvent extends BaseQuidaxEvent {
-  public readonly data: DepositCompletedData;
-  constructor(data: DepositCompletedData, email: string) {
+  public readonly data: DepositExternalCompletedData;
+  constructor(data: DepositExternalCompletedData, email: string) {
     super(QuidaxEventsEnum.DEPOSIT_COMPLETED, email);
     this.data = data;
   }

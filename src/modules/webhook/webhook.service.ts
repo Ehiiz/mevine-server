@@ -1,6 +1,7 @@
 import {
   CreateWithdrawalPayload,
   DepositCompletedData,
+  DepositExternalCompletedData,
   OrderFilledData,
   QuidaxWebhookEvent,
   SwapCompletedData,
@@ -40,7 +41,7 @@ export class WebhookService {
       switch (event) {
         case 'deposit.successful':
           const depositData =
-            webhookPayload.data as unknown as DepositCompletedData;
+            webhookPayload.data as unknown as DepositExternalCompletedData;
           const depositEvent = new CreateWithdrawalQuidaxEvent(
             depositData,
             'support@mevine.ng',
@@ -48,7 +49,7 @@ export class WebhookService {
           await this.quidaxProducerService.addQuidaxApiOperation(depositEvent);
           return { message: 'Deposit event processed.' };
 
-        case 'withdrawal.successful':
+        case 'withdraw.successful':
           const withdrawalData =
             webhookPayload.data as unknown as WithdrawalCompletedData;
 

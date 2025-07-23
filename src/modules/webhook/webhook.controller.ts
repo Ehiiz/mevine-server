@@ -12,14 +12,20 @@ import { WebhookService } from './webhook.service';
 import { QuidaxGuard } from 'src/core/guards/webhook.guard';
 import { Response } from 'express';
 import { SkipTransform } from 'src/core/interceptors/skip-transform.interceptor';
+import { ApiBody } from '@nestjs/swagger';
 
 @Controller('webhook')
 export class WebhookController {
   constructor(private readonly webhookService: WebhookService) {}
 
-  @UseGuards(QuidaxGuard)
+  // @UseGuards(QuidaxGuard)
   @Post('quidax')
   @SkipTransform()
+  @ApiBody({
+    type: 'object',
+    description: 'Quidax webhook payload',
+    required: true,
+  })
   @HttpCode(HttpStatus.OK)
   async quidaxWebhookEvent(@Body() body: any): Promise<void> {
     try {

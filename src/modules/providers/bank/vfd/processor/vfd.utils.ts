@@ -7,16 +7,18 @@ export enum VFDEventsEnum {
 
 export abstract class BaseVFDEvent {
   public readonly requestName: VFDEventsEnum;
+  public readonly email?: string;
 
-  constructor(requestName: VFDEventsEnum) {
+  constructor(requestName: VFDEventsEnum, email?: string) {
     this.requestName = requestName;
+    this.email = email;
   }
 }
 
 export class InitiateTransferEvent extends BaseVFDEvent {
   public readonly data: TransferRequest;
-  constructor(data: TransferRequest) {
-    super(VFDEventsEnum.INITIATE_TRANSFER);
+  constructor(data: TransferRequest, email?: string) {
+    super(VFDEventsEnum.INITIATE_TRANSFER, email);
     this.data = data;
   }
 }

@@ -9,28 +9,33 @@ import {
   SuccessfulDepositEvent,
   VFDEventsEnum,
 } from './vfd.utils';
-import { QuidaxService } from 'src/modules/providers/crypto/quidax/quidax.service';
 import { TransferRequest, TransferResponseData } from '../vfd.interface';
 import { VFDService } from '../vfd.service';
+import { WinstonNestJSLogger } from 'src/core/logger/winston/winston-nestjs-logger.service';
 
 @Injectable()
 @Processor('vfd-process') // This processor will handle jobs from 'product-stats' queue
 export class VfdConsumerService extends WorkerHost {
-  private readonly logger = new Logger();
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly vfdService: VFDService,
+    private readonly logger: WinstonNestJSLogger,
   ) {
     super();
+    this.logger.setContext(VfdConsumerService.name);
   }
 
   async process(job: Job<BaseVFDEvent, any, string>): Promise<any> {
-    const event = (job.data as unknown as any).event as BaseVFDEvent;
-
+    const event = job.data as unknown as BaseVFDEvent;
+    console.log(event);
     switch (event.requestName) {
       case VFDEventsEnum.INITIATE_TRANSFER:
+        this.logger.log(`Processing job: ${job.name} : ${event.requestName} `);
         const formattedEvent = event as unknown as InitiateTransferEvent;
-        const transferEvent = await this.processTransfer(formattedEvent.data);
+        this.logger.log(
+          `Processing job: ${job.name} for ${formattedEvent.data.reference}`,
+        );
+        await this.processTransfer(formattedEvent.data);
         this.logger.log(`Processing job: ${job.name}`);
         break;
 
@@ -38,20 +43,25 @@ export class VfdConsumerService extends WorkerHost {
         const userWalletEvent = event as unknown as SuccessfulDepositEvent;
         await this.processUserDeposit(userWalletEvent.data);
         break;
+
+      default:
+        this.logger.log('Unknown event type: ' + `${event.requestName}`);
     }
 
-    this.logger.log(`Processing function for`);
+    this.logger.log(`Processing function for VFD Consumer Service`);
   }
 
   @OnWorkerEvent('completed')
   onCompleted(job: Job<BaseVFDEvent, any, string>) {
-    this.logger.log(`Quidax request  completed for`);
+    this.logger.log(
+      `Completed VFD api job: ${job.name} for  ${(job.data as unknown as any).email}`,
+    );
   }
 
   @OnWorkerEvent('failed')
   onFailed(job: Job<BaseVFDEvent, any, string>, error: Error) {
     this.logger.error(
-      `Failed quidax api job: ${job.name} for  ${(job.data as unknown as any).event.email}`,
+      `Failed VFD api job: ${job.name} for  ${(job.data as unknown as any).email}`,
       error,
     );
   }
@@ -59,19 +69,23 @@ export class VfdConsumerService extends WorkerHost {
   @OnWorkerEvent('stalled')
   onStalled(job: Job<BaseVFDEvent, any, string>) {
     this.logger.warn(
-      `Stalled quidax api job: ${job.name} -  Event: ${(job.data as unknown as any).event.email}`,
+      `Stalled VFD api job: ${job.name} -  Event: ${(job.data as unknown as any).email}`,
     );
   }
 
   private async processTransfer(body: TransferRequest) {
-    const data = await this.vfdService.transferFunds(body);
-    return;
+    try {
+      this.logger.info(`Processing transfer request for `, body);
+      await this.vfdService.transferFunds(body);
+      return;
+    } catch (error) {
+      this.logger.error(`Error processing transfer request: ${error.message}`);
+      throw error; // Re-throw the error to ensure the job fails
+    }
   }
 
   private async processUserDeposit(addressData: TransferResponseData) {
-    this.logger.debug(addressData);
-
-    const user = await this.databaseService.users.findOne({
+    await this.databaseService.users.findOne({
       'bankDetails.accountNumber': addressData.reference,
     });
 

@@ -18,7 +18,7 @@ export class VfdProducerService {
     try {
       const { requestName, ...data } = event;
 
-      await this.vfdQueue.add(event.requestName, data, {
+      await this.vfdQueue.add(requestName, event, {
         attempts: 3, // Retry up to 3 times if job fails
         backoff: {
           type: 'exponential',
@@ -27,7 +27,9 @@ export class VfdProducerService {
         removeOnComplete: true, // Clean up completed jobs
         removeOnFail: false, // Keep failed jobs for inspection
       });
-      this.logger.log(`Added ${event.requestName} job for Order ID`);
+      this.logger.log(
+        `Added ${event.requestName} job for ${event.email || 'unknown email'}`,
+      );
     } catch (error) {
       this.logger.error(
         `Failed to add ${event.requestName} job : ${error.message}`,

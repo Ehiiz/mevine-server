@@ -15,6 +15,7 @@ import {
   CreateWithdrawalPayload,
   CryptoWithdrawalFees,
   DepositCompletedData,
+  DepositExternalCompletedData,
   FeeRange,
   WalletGeneratedData,
   WithdrawalCompletedData,
@@ -99,7 +100,7 @@ export class QuidaxConsumerService extends WorkerHost {
     this.platformClient =
       this.configService.get<string>('PLATFORM_CLIENT') || '';
     this.platformAccountId =
-      this.configService.get<string>('PLATFORM_ACCOUNT_ID') || '';
+      this.configService.get<string>('PLATFORM_SAVINGS_ID') || '';
     this.platformAccountNumber =
       this.configService.get<string>('PLATFORM_ACCOUNT_NUMBER') || '';
     this.platformQuidaxId =
@@ -261,7 +262,7 @@ export class QuidaxConsumerService extends WorkerHost {
     return { message: 'Withdrawal address generated event processed.' };
   }
 
-  private async processDeposit(depositData: DepositCompletedData) {
+  private async processDeposit(depositData: DepositExternalCompletedData) {
     this.logger.log(
       `Handling deposit.completed event for ID: ${depositData.id}`,
     );
@@ -284,8 +285,17 @@ export class QuidaxConsumerService extends WorkerHost {
       });
 
       if (!user) {
-        this.logger.log(`User ${depositData.user.id} not found`);
+        this.logger.error(`User ${depositData.user.id} not found`);
+        return;
         //add notifications or push money to main account
+      }
+
+      const crypto = user.cryptoAddresses.get(
+        depositData.currency.toLowerCase() as BlockchainEnum,
+      );
+      if (crypto!.address !== depositData.wallet.deposit_address) {
+        this.logger.error(" Deposit address matches user's crypto address");
+        return;
       }
 
       // Ensure the amount is a string as per Quidax API requirements
@@ -367,6 +377,14 @@ export class QuidaxConsumerService extends WorkerHost {
     cryptoFund.settlementStatus = CryptoSettlementStatusEnum.SETTLED;
     await cryptoFund.save({ session });
 
+    if (cryptoFund.senderId !== depositData.user?.id) {
+      this.logger.error(
+        `Crypto fund transaction ${cryptoFund.reference} does not match user ID ${depositData.user?.id}. Aborting transaction.`,
+      );
+      await session.endSession();
+      return;
+    }
+
     const user = await this.databaseService.users.findOne({
       quidaxId: depositData.user?.id,
     });
@@ -396,6 +414,7 @@ export class QuidaxConsumerService extends WorkerHost {
           transfer_type: 'intra', // Assuming intra-bank transfer
         });
 
+      this.logger.log(recipientDetails);
       if (!recipientDetails) {
         this.logger.error(
           `Bank details verification failed for user ${user.email}. Aborting transaction.`,
@@ -531,10 +550,10 @@ export class QuidaxConsumerService extends WorkerHost {
 
       // 8. Get Swap Quotation for the Net Crypto Amount
       const quotation = await this.quidaxService.temporarySwapQuotation(
-        user.quidaxId, // Use user's quidaxId for the swap
+        'me', // Use user's quidaxId for the swap
         {
           from_currency: lowerCaseCurrency,
-          to_currency: 'NGN',
+          to_currency: 'ngn',
           from_amount: netCryptoAmount.toFixed(8), // Use netCryptoAmount for swap, ensure string format
         },
       );
@@ -588,7 +607,7 @@ export class QuidaxConsumerService extends WorkerHost {
         ...(recipientDetails.bvn && { toBvn: recipientDetails.bvn }),
       };
 
-      const event = new InitiateTransferEvent(transferRequest);
+      const event = new InitiateTransferEvent(transferRequest, user.email);
 
       const transferResult =
         await this.vfdProducerService.addVfdApiOperation(event);
@@ -644,40 +663,47 @@ export class QuidaxConsumerService extends WorkerHost {
     session: mongoose.ClientSession,
   ): Promise<TransactionDocument> {
     try {
-      const [receipt] = await this.databaseService.transactions.create(
-        {
-          amount: body.transferAmount, // Store the actual transfer amount in NGN
-          reference: body.reference,
-          service: ServiceTypeEnum.crypto,
-          user: body.user._id,
-          status: body.status || TransactionStatusEnum.pending,
-          type: TransactionTypeEnum.funding,
-          meta: {
-            originalCryptoAmount: body.amount,
-            totalFees: body.totalFees,
-            currency: body.currency,
-            reason: body.reason || 'Crypto deposit processing',
-            paidFrom: {
-              entityId: body.user._id.toString(),
-              entityType: TransactionEntityTypeEnum.crypto,
-              entityNumber: body.walletAddress,
-              entityCode: body.currency,
-              entityName: body.currency,
-            },
-            paidTo: {
-              entityId: body.user._id.toString(),
-              entityType: TransactionEntityTypeEnum.user,
-              entityNumber: body.user.bankDetails.accountNumber,
-              entityCode: body.user.bankDetails.bankCode,
-              entityName: body.user.bankDetails.bankName,
-            },
+      const transactionData = {
+        amount: body.transferAmount, // Store the actual transfer amount in NGN
+        reference: body.reference,
+        service: ServiceTypeEnum.crypto,
+        user: body.user._id,
+        status: body.status || TransactionStatusEnum.pending,
+        type: TransactionTypeEnum.funding,
+        meta: {
+          originalCryptoAmount: body.amount,
+          totalFees: body.totalFees,
+          currency: body.currency,
+          reason: body.reason || 'Crypto deposit processing',
+          paidFrom: {
+            entityId: body.user._id.toString(),
+            entityType: TransactionEntityTypeEnum.crypto,
+            entityNumber: body.walletAddress,
+            entityCode: body.currency,
+            entityName: body.currency,
+          },
+          paidTo: {
+            entityId: body.user._id.toString(),
+            entityType: TransactionEntityTypeEnum.user,
+            entityNumber: body.user.bankDetails?.accountNumber || '',
+            entityCode: body.user.bankDetails?.bankCode || '',
+            entityName: body.user.bankDetails?.bankName || '',
           },
         },
+      };
+
+      const [receipt] = await this.databaseService.transactions.create(
+        [transactionData],
         { session },
       );
+
       return receipt;
     } catch (error) {
-      throw error;
+      // Log the error for debugging
+      this.logger.error('Error generating transaction receipt:', error);
+      throw new Error(
+        `Failed to generate transaction receipt: ${error.message}`,
+      );
     }
   }
 

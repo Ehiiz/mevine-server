@@ -304,6 +304,65 @@ export interface QuidaxWebhookEvent<T> {
 
 // ====== WEBHOOK DATA INTERFACES ======
 
+export interface DepositExternalCompletedData {
+  id: string;
+  type: string; // e.g., "coin_address"
+  currency: string; // e.g., "trx"
+  amount: string; // e.g., "3.0"
+  fee: string; // e.g., "0.0"
+  txid: string;
+  status: string; // e.g., "accepted"
+  reason: string | null;
+  created_at: string; // ISO date string
+  done_at: string | null;
+
+  wallet: {
+    id: string;
+    name: string; // e.g., "Tron"
+    currency: string; // e.g., "trx"
+    balance: string; // e.g., "5.0"
+    locked: string; // e.g., "0.0"
+    staked: string; // e.g., "0.0"
+    user: BaseUser;
+    converted_balance: string; // e.g., "1243.0"
+    reference_currency: string; // e.g., "ngn"
+    is_crypto: boolean;
+    created_at: string;
+    updated_at: string;
+    blockchain_enabled: boolean;
+    default_network: string; // e.g., "trc20"
+    networks: Array<{
+      id: string; // e.g., "trc20"
+      name: string; // e.g., "Tron Network"
+      deposits_enabled: boolean;
+      withdraws_enabled: boolean;
+    }>;
+    deposit_address: string;
+    destination_tag: string | null;
+  };
+
+  user: BaseUser;
+
+  payment_transaction: {
+    status: string; // e.g., "confirmed"
+    confirmations: number;
+    required_confirmations: number;
+  };
+
+  payment_address: {
+    id: string;
+    reference: string | null;
+    currency: string;
+    address: string;
+    network: string; // e.g., "trc20"
+    user: BaseUser;
+    destination_tag: string | null;
+    total_payments: number | null;
+    created_at: string;
+    updated_at: string;
+  };
+}
+
 export interface DepositCompletedData {
   id: string;
   reference: string | null;
