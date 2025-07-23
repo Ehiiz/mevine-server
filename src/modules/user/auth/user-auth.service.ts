@@ -1,6 +1,7 @@
 import { th } from '@faker-js/faker/.';
 import { T } from '@faker-js/faker/dist/airline-BUL6NtOJ';
 import {
+  BadGatewayException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -266,7 +267,9 @@ export class UserAuthService {
 
       return { token, user: body.user };
     } catch (error) {
-      throw error;
+      throw new BadGatewayException(
+        'Error completing account setup: ' + error.message,
+      );
     }
   }
 
