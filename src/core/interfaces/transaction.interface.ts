@@ -44,6 +44,8 @@ export enum TxInfoEnum {
   general = 'general',
   error = 'error',
   info = 'info',
+  giftcard_image = 'giftcard_image',
+  giftcard_code = 'giftcard_code',
 }
 
 export interface IMetaInfo {

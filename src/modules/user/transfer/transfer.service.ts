@@ -302,6 +302,7 @@ export class UserTransferService {
     customerName?: string;
     customerId?: string;
     remark: string;
+    image?: string;
   }): Promise<Transaction> {
     const session = await this.databaseService.users.startSession(); // Start a Mongoose session
     session.startTransaction(); // Start a transaction
@@ -341,7 +342,8 @@ export class UserTransferService {
         body.service === ServiceTypeEnum.airtime ||
         body.service === ServiceTypeEnum.cable || // Fix: Ensure logical OR for all services
         body.service === ServiceTypeEnum.data ||
-        body.service === ServiceTypeEnum.electricity
+        body.service === ServiceTypeEnum.electricity ||
+        body.service === ServiceTypeEnum.giftcard
       ) {
         receipt = await this.billPayments(
           {
@@ -357,6 +359,8 @@ export class UserTransferService {
             transactionType: this.getTransactionType(body.service), // This actually generates an EntityType
           },
           session, // Pass session
+          body.service === ServiceTypeEnum.giftcard, // Pass giftcard flag
+          body.service === ServiceTypeEnum.giftcard ? body.image : undefined, // Optional image for giftcard
         );
       } else {
         throw new BadRequestException('Invalid or unsupported service type.');
@@ -423,25 +427,46 @@ export class UserTransferService {
       phoneNumber?: string; // Optional for some products (e.g., electricity)
     },
     session: mongoose.ClientSession, // Accept session
+    giftcard: boolean = false, // Optional param to handle giftcard payments
+    image?: string, // Optional image for giftcard
   ): Promise<TransactionDocument> {
     try {
       const { user, service, transactionType, ...billData } = body;
 
-      // Ensure transaction is created within the session
+      const entityId = giftcard ? user.id : billData.billerId;
+      const entityNumber = giftcard
+        ? billData.paymentItem
+        : billData.customerId;
+      const entityName = giftcard ? billData.paymentItem : billData.division;
+
+      // Create transaction receipt within session
       const receipt = await this.generateTransactionReceipt(
         {
-          user: body.user,
+          user,
           reference: billData.reference,
           amount: parseInt(billData.amount),
-          entityId: billData.billerId,
-          entityType: transactionType, // Use the provided transactionType here
-          entityNumber: billData.customerId, // Customer ID is more appropriate here
-          entityCode: billData.paymentItem, // Payment item code
-          entityName: billData.division, // Division/Category name
-          service: service,
+          entityId,
+          entityType: transactionType, // Use provided transactionType
+          entityNumber,
+          entityCode: billData.paymentItem, // Payment item code stays same
+          entityName,
+          service,
         },
         session, // Pass session
       );
+
+      if (service === ServiceTypeEnum.giftcard) {
+        receipt.additionalDetails = [
+          { title: TxInfoEnum.giftcard_image, info: image! },
+          { title: TxInfoEnum.giftcard_code, info: billData.paymentItem! },
+        ];
+      }
+
+      if (giftcard) {
+        await receipt.save({ session }); // Save status update within session
+
+        return receipt; // If it's a giftcard, we don't proceed with external payment
+      }
 
       // Perform external payment
       const { data } = await this.bankService.payBill(billData);
@@ -607,34 +632,36 @@ export class UserTransferService {
   ): Promise<TransactionDocument> {
     try {
       const [receipt] = await this.databaseService.transactions.create(
-        {
-          amount: body.amount,
-          reference: body.reference,
-          service: body.service,
-          user: body.user._id,
-          // Default status to pending, will be updated to completed or failed later
-          status: TransactionStatusEnum.pending,
-          type:
-            body.service === ServiceTypeEnum.transfer
-              ? TransactionTypeEnum.transfer
-              : TransactionTypeEnum.funding, // Example: Adjust type based on service
-          meta: {
-            paidFrom: {
-              entityId: body.user._id.toString(),
-              entityType: TransactionEntityTypeEnum.user,
-              entityNumber: body.user.bankDetails.accountNumber,
-              entityCode: body.user.bankDetails.bankCode, // Assuming this is present
-              entityName: body.user.bankDetails.bankName, // Assuming this is present
-            },
-            paidTo: {
-              entityId: body.entityId,
-              entityType: body.entityType,
-              entityNumber: body.entityNumber,
-              entityCode: body.entityCode,
-              entityName: body.entityName,
+        [
+          {
+            amount: body.amount,
+            reference: body.reference,
+            service: body.service,
+            user: body.user._id,
+            // Default status to pending, will be updated to completed or failed later
+            status: TransactionStatusEnum.pending,
+            type:
+              body.service === ServiceTypeEnum.transfer
+                ? TransactionTypeEnum.transfer
+                : TransactionTypeEnum.funding, // Example: Adjust type based on service
+            meta: {
+              paidFrom: {
+                entityId: body.user._id.toString(),
+                entityType: TransactionEntityTypeEnum.user,
+                entityNumber: body.user.bankDetails.accountNumber,
+                entityCode: body.user.bankDetails.bankCode, // Assuming this is present
+                entityName: body.user.bankDetails.bankName, // Assuming this is present
+              },
+              paidTo: {
+                entityId: body.entityId,
+                entityType: body.entityType,
+                entityNumber: body.entityNumber,
+                entityCode: body.entityCode,
+                entityName: body.entityName,
+              },
             },
           },
-        },
+        ],
         { session }, // Pass session here
       );
       return receipt;

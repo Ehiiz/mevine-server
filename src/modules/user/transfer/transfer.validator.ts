@@ -240,6 +240,24 @@ export class ProcessTransactionDto {
   customerName?: string;
 
   @ApiProperty({
+    description: 'Card Image',
+    example: 'https://cloud.example.com/image.jpg',
+    required: false,
+  })
+  @IsOptional()
+  @IsString({ message: 'Link to image to be uploaded' })
+  image?: string;
+
+  @ApiProperty({
+    description: 'Type of card (e.g., amazon, apple, google)',
+    example: 'amazon',
+    required: false,
+  })
+  @IsOptional()
+  @IsString({ message: 'Type of card' })
+  cardType?: string;
+
+  @ApiProperty({
     description: 'Customer ID (e.g., meter number for electricity)',
     example: '12345678901',
     required: false,
