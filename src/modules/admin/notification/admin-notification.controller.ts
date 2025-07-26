@@ -39,7 +39,7 @@ import {
 import { ServiceDecorator } from 'src/core/decorators/auth.decorator';
 
 @ApiTags('Admin Notifications')
-@Controller('admin/notifications') // Admin-specific route prefix
+@Controller('') // Admin-specific route prefix
 @ServiceDecorator(WebServiceTypeEnum.ADMIN) // Custom decorator to indicate this is an admin service
 @UseGuards(AuthGuard) // Assuming this guard checks for admin roles/permissions
 @ApiBearerAuth()

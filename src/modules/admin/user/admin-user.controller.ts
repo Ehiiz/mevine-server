@@ -27,6 +27,7 @@ import {
 } from 'src/core/interfaces/shared.interface';
 import {
   FetchUsersQueryDto,
+  FormattedUserSchema,
   UserIdParamDto,
   UserResponseSchema,
 } from './admin-user.validator';

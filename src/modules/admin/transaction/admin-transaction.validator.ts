@@ -139,7 +139,7 @@ export class UpdateAdminTransactionStatusDto {
   @IsEnum(TransactionStatusEnum, {
     message: `Status must be one of: ${Object.values(TransactionStatusEnum).join(', ')}`,
   })
-  status: TransactionStatusEnum;
+  status: TransactionStatusEnum.processing | TransactionStatusEnum.cancelled;
 }
 
 export class SimulateCreditDto {
@@ -222,7 +222,7 @@ export class SimulateCreditDto {
 
 // Re-using Transaction structure for response definition (from user-transaction.dto.ts or redefine if path differs)
 // Assuming Transaction and its related enums are correctly imported.
-class TransactionResponseSchema implements Transaction {
+export class TransactionResponseSchema implements Transaction {
   @ApiProperty({ type: 'string', example: '60c72b2f9b1d8e001c8a1b2d' })
   _id: any;
 
@@ -307,6 +307,63 @@ class TransactionResponseSchema implements Transaction {
     type: 'string',
     format: 'date-time',
     example: '2023-01-15T10:05:00.000Z',
+  })
+  updatedAt: Date;
+}
+
+export class GiftCardResponseDto {
+  @ApiProperty({
+    example: '60c72b2f9b1d8b001cf8f123',
+    description: 'Gift card ID',
+  })
+  _id: string;
+
+  @ApiProperty({
+    example: '60c72b2f9b1d8b001cf8f456',
+    description: 'User ID or full user object if populated',
+  })
+  user: string | any;
+
+  @ApiProperty({
+    example: 5000,
+    description: 'Gift card amount in base currency',
+  })
+  amount: number;
+
+  @ApiProperty({
+    example: 'Amazon',
+    description: 'Type of gift card (e.g., Amazon, iTunes)',
+  })
+  cardType: string;
+
+  @ApiProperty({
+    example: 'AXY-Z45-KPL',
+    description: 'Card code for redemption',
+  })
+  cardCode: string;
+
+  @ApiProperty({
+    enum: TransactionStatusEnum,
+    description: 'Status of the gift card transaction',
+  })
+  status: TransactionStatusEnum;
+
+  @ApiProperty({
+    required: false,
+    example: 'Suspicious redemption pattern',
+    description: 'Optional admin notes',
+  })
+  adminNotes?: string;
+
+  @ApiProperty({
+    example: '2025-07-24T12:34:56.789Z',
+    description: 'Creation timestamp',
+  })
+  createdAt: Date;
+
+  @ApiProperty({
+    example: '2025-07-25T10:20:30.123Z',
+    description: 'Last updated timestamp',
   })
   updatedAt: Date;
 }

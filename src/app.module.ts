@@ -32,6 +32,7 @@ import { QuidaxModule } from './modules/providers/crypto/quidax/quidax.module';
 import { WebhookModule } from './modules/webhook/webhook.module';
 import { QuidaxQueueModule } from './modules/providers/crypto/quidax/processor/quidax-queue.module';
 import { VFDQueueModule } from './modules/providers/bank/vfd/processor/vfd-queue.module';
+import { DashboardModule } from './modules/admin/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -195,6 +196,10 @@ import { VFDQueueModule } from './modules/providers/bank/vfd/processor/vfd-queue
             path: 'notification',
             module: AdminNotificationModule,
           },
+          {
+            path: 'dashboard',
+            module: DashboardModule,
+          },
         ],
       },
     ]),
@@ -212,6 +217,7 @@ import { VFDQueueModule } from './modules/providers/bank/vfd/processor/vfd-queue
     UserTransferModule,
     UserNotificationsModule,
     AdminAuthModule,
+    DashboardModule,
     AdminTransactionModule,
     AdminUserModule,
     AdminNotificationModule,

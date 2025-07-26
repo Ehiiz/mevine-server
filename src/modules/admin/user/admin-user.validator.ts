@@ -189,3 +189,27 @@ export class UserResponseSchema
   })
   updatedAt: Date;
 }
+
+export class FormattedUserSchema {
+  @ApiProperty({ type: 'string', example: 'John' })
+  name: string;
+
+  @ApiProperty({ type: 'string', example: 'user@example.com' })
+  email: string;
+
+  @ApiProperty({
+    type: 'string',
+    format: 'date-time',
+    example: '2023-01-15T10:05:00.000Z',
+  })
+  joinedDate: Date;
+
+  @ApiProperty({ type: 'boolean', example: false })
+  status: boolean;
+
+  @ApiProperty({ type: 'string', example: '2081790324' })
+  accountNumber: string;
+
+  @ApiProperty({ type: 'boolean', example: false })
+  kycVerified: boolean;
+}

@@ -134,13 +134,13 @@ export class AdminNotificationsService {
         this.databaseService.notifications
           .find(query)
           .populate('initiator', 'firstName lastName email') // Populate initiator details
+          .populate('targetUsers', 'firstName lastName email')
           .sort({ createdAt: -1 })
           .skip(skip)
           .limit(limit)
           .exec(),
         this.databaseService.notifications.countDocuments(),
       ]);
-      console.log('Fetched notifications:', notifications);
       return {
         currentPage: page,
         totalPages: Math.ceil(count / limit),

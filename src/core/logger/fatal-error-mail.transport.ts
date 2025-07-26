@@ -20,12 +20,8 @@ export class FatalErrorMailTransport extends Transport {
     setImmediate(() => {
       this.emit('logged', info);
     });
-    console.log('FatalErrorMailTransport log called');
-    console.log(info.level);
-    console.log('Initializing Email Service');
-    console.log(this.emailService.configService.get<string>('NODEMAILER_HOST'));
 
-    if (info.level === 'error' || info.level === 'fatal') {
+    if (info.level === 'fatal') {
       try {
         const subject = 'FATAL ERROR Detected in Application';
         const html = `

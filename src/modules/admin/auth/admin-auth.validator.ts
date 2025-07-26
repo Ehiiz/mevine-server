@@ -6,6 +6,8 @@ import {
   MinLength,
   Matches,
   IsOptional,
+  Min,
+  Max,
 } from 'class-validator';
 import { Admin } from 'src/core/database/schemas/admin.schema'; // For response typing in Controller
 
@@ -24,6 +26,16 @@ export class CreateAdminAccountDto {
   @IsEmail({}, { message: 'Please provide a valid email address' })
   @IsNotEmpty({ message: 'Email is required' })
   email: string;
+
+  @ApiProperty({
+    description: 'Admin password',
+    example: 'A1234456AS',
+    format: 'password',
+  })
+  @IsNotEmpty({ message: 'Password is required' })
+  @Min(8)
+  @Max(12)
+  password: string;
 }
 
 export class VerifyAdminEmailDto {
@@ -66,21 +78,6 @@ export class CompleteAdminAccountDto {
   lastName: string;
 
   @ApiProperty({
-    description:
-      'Admin password (min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char)',
-    example: 'AdminP@ss1',
-    minLength: 8,
-  })
-  @IsString({ message: 'Password must be a string' })
-  @IsNotEmpty({ message: 'Password is required' })
-  @MinLength(8, { message: 'Password must be at least 8 characters long' })
-  @Matches(passwordRegex, {
-    message:
-      'Password must contain at least 8 characters, one uppercase, one lowercase, one number and one special character',
-  })
-  password: string;
-
-  @ApiProperty({
     description: '4-digit transaction passcode (PIN) for admin actions',
     example: '5678',
     minLength: 4,
@@ -90,15 +87,6 @@ export class CompleteAdminAccountDto {
   @IsNotEmpty({ message: 'Passcode is required' })
   @Matches(pinRegex, { message: 'Passcode must be a 4-digit number' })
   passcode: string;
-
-  @ApiProperty({
-    description: 'URL to admin avatar image (optional)',
-    example: 'https://example.com/admin_avatar.jpg',
-    required: false,
-  })
-  @IsOptional()
-  @IsString({ message: 'Avatar must be a string (URL)' })
-  avatar?: string;
 }
 
 export class AdminLoginDto {
@@ -110,6 +98,15 @@ export class AdminLoginDto {
   @IsEmail({}, { message: 'Please provide a valid email address' })
   @IsNotEmpty({ message: 'Email is required' })
   email: string;
+
+  @ApiProperty({
+    description: 'Admin password',
+    example: 'ABC1234$O',
+  })
+  @Min(8)
+  @Max(12)
+  @IsNotEmpty({ message: 'Password is required' })
+  password: string;
 }
 
 export class AdminForgotPasswordDto {

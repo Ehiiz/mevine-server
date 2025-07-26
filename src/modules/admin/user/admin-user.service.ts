@@ -5,11 +5,23 @@ import {
 } from '@nestjs/common';
 import mongoose from 'mongoose';
 import { DatabaseService } from 'src/core/database/database.service';
-import { User } from 'src/core/database/schemas/user.schema';
+import { User, UserDocument } from 'src/core/database/schemas/user.schema';
+import { FormattedUserSchema } from './admin-user.validator';
 
 @Injectable()
 export class AdminUserService {
   constructor(private readonly databaseService: DatabaseService) {}
+
+  private formatUser(user: UserDocument): FormattedUserSchema {
+    return {
+      name: `${user.firstName} ${user.lastName}`,
+      email: user.email,
+      joinedDate: user.createdAt,
+      status: user.accountStatus.accountVerified,
+      accountNumber: user.bankDetails?.accountNumber ?? 'N/A',
+      kycVerified: user.accountStatus.kycVerified,
+    };
+  }
 
   async fetchUsersWithQuery(body: {
     page: number;

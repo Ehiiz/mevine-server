@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose, { Document } from 'mongoose';
 import { IAccountStatus, IAuth } from '../../interfaces/shared.interface';
+import { fa } from '@faker-js/faker/.';
 
 export type AdminDocument = Admin & Document;
 
@@ -27,6 +28,8 @@ export class Admin {
 
   @Prop({
     type: String,
+    default:
+      'https://images.unsplash.com/vector-1745610393550-7a2877ee86d4?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mjh8fGF2YXRhcnxlbnwwfHwwfHx8MA%3D%3D',
   })
   avatar: string;
 
@@ -50,14 +53,14 @@ export class Admin {
         type: Boolean,
         default: false,
       },
-      kycVerified: {
+      completeSetup: {
         type: Boolean,
         default: false,
       },
     },
     default: {
       accountVerified: false,
-      kycVerified: false,
+      completeSetup: false,
     },
   })
   accountStatus: Omit<IAccountStatus, 'kycVerified'>;
@@ -79,3 +82,23 @@ export class Admin {
 }
 
 export const AdminSchema = SchemaFactory.createForClass(Admin);
+
+AdminSchema.set('toJSON', {
+  virtuals: true,
+  transform: (doc, ret) => {
+    ret.id = ret._id.toHexString();
+    delete ret._id;
+    delete ret.auth; // Remove sensitive auth data
+    return ret;
+  },
+});
+
+AdminSchema.set('toObject', {
+  virtuals: true,
+  transform: (doc, ret) => {
+    ret.id = ret._id.toHexString();
+    delete ret._id;
+    delete ret.auth; // Remove sensitive auth data
+    return ret;
+  },
+});

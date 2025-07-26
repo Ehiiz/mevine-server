@@ -31,6 +31,7 @@ export class AdminAuthService {
 
   async createAccount(body: {
     email: string;
+    password: string;
   }): Promise<{ admin: Admin; code: string }> {
     try {
       const existingAdmin = await this.databaseService.admins.findOne({
@@ -43,15 +44,20 @@ export class AdminAuthService {
 
       const code = generateRandomDigits();
       const hashedCode = await this.bcryptService.hashPassword(code);
+      const hashedPassword = await this.bcryptService.hashPassword(
+        body.password,
+      );
 
       const now = new Date();
       now.setMinutes(now.getMinutes() + 30);
 
       const admin = await this.databaseService.admins.create({
         email: body.email,
+        password: body.password,
         auth: {
           accountVerificationToken: hashedCode,
           verificationTokenExpiration: now,
+          password: hashedPassword,
         },
       });
 
@@ -112,23 +118,16 @@ export class AdminAuthService {
 
   async completeAccount(body: {
     admin: AdminDocument;
-    password: string;
     firstName: string;
     lastName: string;
     passcode: string;
-    avatar?: string;
   }): Promise<{ token: string; admin: Admin }> {
     try {
-      const hashedPassword = await this.bcryptService.hashPassword(
-        body.password,
-      );
       const hashedPin = await this.bcryptService.hashPassword(body.passcode);
 
-      body.admin.avatar = body.avatar!;
       body.admin.auth.transactionPin = hashedPin;
       body.admin.firstName = body.firstName;
       body.admin.lastName = body.lastName;
-      body.admin.auth.password = hashedPassword;
       body.admin.accountStatus.completeSetup = true;
 
       await body.admin.save();
@@ -141,51 +140,69 @@ export class AdminAuthService {
 
       await this.emailQueueService.handleEmailEvent(event);
 
-      return { token, admin: body.admin };
+      return { token, admin: body.admin.toJSON() as Admin };
     } catch (error) {
       throw error;
     }
   }
 
-  async login(body: { email: string }): Promise<{ token: string }> {
+  async login(body: { email: string; password: string }): Promise<{
+    token?: string;
+    admin?: Admin;
+    completed: boolean;
+    verified: boolean;
+  }> {
     try {
       const admin = await this.databaseService.admins.findOne({
         email: body.email,
       });
 
+      // eslint-disable-next-line prefer-const
+      let loginToken: string | undefined;
+
       if (!admin) {
         throw new NotFoundException('Admin not found, Please signup');
       }
 
-      const loginCode = generateRandomDigits();
+      if (!admin.accountStatus.accountVerified) {
+        const code = generateRandomDigits();
+        const hashedCode = await this.bcryptService.hashPassword(code);
 
-      if (!admin.auth) {
-        admin.auth = {} as any;
+        const now = new Date();
+        now.setMinutes(now.getMinutes() + 30);
+
+        admin.auth.accountVerificationToken = hashedCode;
+        admin.auth.verificationTokenExpiration = now;
+        await admin.save();
+
+        const event = new UserRegisteredEvent(body.email, code);
+
+        await this.emailQueueService.handleEmailEvent(event);
       }
 
-      admin.auth.loginVerificationToken =
-        await this.bcryptService.hashPassword(loginCode);
-      admin.auth.loginTokenExpiration = new Date();
-      admin.auth.loginTokenExpiration.setMinutes(
-        admin.auth.loginTokenExpiration.getMinutes() + 10,
-      );
+      if (!admin.accountStatus.accountVerified) {
+        return {
+          token: loginToken,
+          admin: admin.toJSON(),
+          completed: admin.accountStatus.completeSetup,
+          verified: admin.accountStatus.accountVerified,
+        };
+      }
 
-      await admin.save();
-
-      const event = new AdminLoginAttemptEvent(
-        this.configService,
-        loginCode,
-        body.email,
-      );
-
-      await this.emailQueueService.handleEmailEvent(event);
-
-      const { token } = await this.verifyLoginCode({
-        code: loginCode,
+      const { token: tok } = await this.verifyLoginCode({
+        code: body.password,
         email: body.email,
       });
+      loginToken = tok;
 
-      return { token };
+      console.log('Login token:', loginToken);
+
+      return {
+        token: loginToken,
+        admin: admin.toJSON(),
+        completed: admin.accountStatus.completeSetup,
+        verified: admin.accountStatus.accountVerified,
+      };
     } catch (error) {
       throw error;
     }
@@ -204,21 +221,16 @@ export class AdminAuthService {
         throw new NotFoundException('Admin not found in database');
       }
 
+      console.log(admin.auth.password);
+
       const validToken = await this.bcryptService.comparePassword({
         password: body.code,
-        hashedPassword: admin.auth.loginVerificationToken!,
+        hashedPassword: admin.auth.password!,
       });
 
       if (!validToken) {
         throw new UnauthorizedException('Invalid unauthorized token');
       }
-
-      if (admin.auth.loginTokenExpiration! <= new Date()) {
-        throw new UnauthorizedException('Token has expired');
-      }
-
-      admin.auth.loginTokenExpiration = null;
-      admin.auth.loginVerificationToken = null;
 
       await admin.save();
 
@@ -319,10 +331,10 @@ export class AdminAuthService {
       if (admin.auth.tokenExpiration! <= new Date()) {
         throw new UnauthorizedException('Token has expired');
       }
+      const password = await this.bcryptService.hashPassword(body.password);
+      console.log(password);
 
-      admin.auth.password = await this.bcryptService.hashPassword(
-        body.password,
-      );
+      admin.auth.password = password;
 
       admin.auth.tokenExpiration = null;
       admin.auth.passwordResetToken = null;

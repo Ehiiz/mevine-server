@@ -80,14 +80,12 @@ export class AdminAuthController {
   ): Promise<{ message: string; data: any }> {
     try {
       const { admin, code } = await this.adminAuthService.createAccount(body);
-      // In a production environment, you should avoid returning the code directly.
       return {
         message:
           'Admin account created successfully. Verification code sent to email.',
         data: {
           id: admin._id,
           email: admin.email,
-          // verificationCode: code, // Consider removing this line in production
         },
       };
     } catch (error) {
@@ -205,25 +203,13 @@ export class AdminAuthController {
   }> {
     try {
       const admin: AdminDocument = request.admin; // AdminDocument populated by AuthGuard
-      const { token, admin: updatedAdmin } =
-        await this.adminAuthService.completeAccount({ admin, ...body });
+      const data = await this.adminAuthService.completeAccount({
+        admin,
+        ...body,
+      });
       return {
         message: 'Admin account setup completed successfully.',
-        data: {
-          token,
-          admin: {
-            _id: updatedAdmin._id,
-            email: updatedAdmin.email,
-            firstName: updatedAdmin.firstName,
-            lastName: updatedAdmin.lastName,
-            avatar: updatedAdmin.avatar,
-            accountStatus: updatedAdmin.accountStatus,
-            createdAt: updatedAdmin.createdAt,
-            updatedAt: updatedAdmin.updatedAt,
-            deleted: updatedAdmin.deleted,
-            restricted: updatedAdmin.restricted,
-          },
-        },
+        data,
       };
     } catch (error) {
       throw error;
@@ -273,15 +259,21 @@ export class AdminAuthController {
       'Invalid or expired login code (internal verification failed).',
     type: ErrorResponseDto,
   })
-  async login(
-    @Body() body: AdminLoginDto,
-  ): Promise<{ message: string; data: { token: string } }> {
+  async login(@Body() body: AdminLoginDto): Promise<{
+    message: string;
+    data: {
+      token?: string;
+      admin?: Admin;
+      completed: boolean;
+      verified: boolean;
+    };
+  }> {
     try {
       // The service's login method itself handles sending email AND verifying, returning the token directly.
-      const { token } = await this.adminAuthService.login(body);
+      const data = await this.adminAuthService.login(body);
       return {
         message: 'Admin login successful.',
-        data: { token },
+        data,
       };
     } catch (error) {
       throw error;

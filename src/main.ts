@@ -32,6 +32,10 @@ async function bootstrap() {
   // Use Winston as the main NestJS logger
   const winstonLogger = app.get(WINSTON_MODULE_PROVIDER);
   app.useLogger(winstonLogger);
+  app.enableCors({
+    credentials: true,
+    origin: '*', // Use env variable for CORS origin
+  });
 
   // --- Global Filters and Interceptors ---
   app.useGlobalFilters(new HttpExceptionFilter(winstonLogger));
