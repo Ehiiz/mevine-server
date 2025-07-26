@@ -148,6 +148,15 @@ export class UserAuthService {
         );
       }
 
+      if (
+        user.accountStatus?.accountVerified &&
+        user.accountStatus?.completeSetup
+      ) {
+        throw new UnauthorizedException(
+          'User already verified and completed account setup',
+        );
+      }
+
       const validToken = await this.bcryptService.comparePassword({
         password: body.code,
         hashedPassword: user.auth.accountVerificationToken!,
@@ -276,39 +285,55 @@ export class UserAuthService {
         email: body.email,
       });
 
-      let message: string = 'Email sent to account';
       if (!user) {
         throw new NotFoundException('User not found, Please signup');
       }
 
-      if (!user.accountStatus) {
-        throw new NotFoundException(
-          'User has not completed account setup, Return to sign up ',
+      if (!user.accountStatus || user.accountStatus.completeSetup !== true) {
+        const accountVerificationCode = generateRandomDigits();
+        const hashedCode = await this.bcryptService.hashPassword(
+          accountVerificationCode,
         );
+
+        user.auth.accountVerificationToken = hashedCode;
+        user.auth.verificationTokenExpiration = new Date();
+        user.auth.verificationTokenExpiration.setMinutes(
+          user.auth.verificationTokenExpiration.getMinutes() + 10, // Token valid for 10 minutes
+        );
+
+        await user.save(); // Save the updated user object with the new token
+
+        const event = new UserRegisteredEvent(
+          body.email,
+          accountVerificationCode,
+        );
+        await this.emailProducerService.handleEmailEvent(event);
+
+        // Return early, indicating that the user needs to complete setup.
+        return { message: 'Complete account setup' };
       }
 
-      if (user.accountStatus?.completeSetup !== true) {
-        message = 'Complete account setup';
-      }
-
-      const loginCode = generateRandomDigits();
-
+      // 3. If we reach here, it means the user exists AND their account setup is complete (`user.accountStatus.completeSetup === true`).
+      // Proceed with the regular login verification flow.
+      const loginCode = generateRandomDigits(); // This code is for regular login verification
       const hashedCode = await this.bcryptService.hashPassword(loginCode);
 
       user.auth.loginVerificationToken = hashedCode;
       user.auth.loginTokenExpiration = new Date();
       user.auth.loginTokenExpiration.setMinutes(
-        user.auth.loginTokenExpiration.getMinutes() + 10,
+        user.auth.loginTokenExpiration.getMinutes() + 10, // Token valid for 10 minutes
       );
 
-      await user.save();
+      await user.save(); // Save the updated user object with the new token
 
+      // Send an email with the login verification code.
       const event = new UserLoginAttemptEvent(body.email, loginCode);
-
       await this.emailProducerService.handleEmailEvent(event);
 
-      return { message: message };
+      // Return, indicating that an email with the login code has been sent.
+      return { message: 'Email sent to account' };
     } catch (error) {
+      // Re-throw any caught errors to be handled by a global exception filter or calling service.
       throw error;
     }
   }
