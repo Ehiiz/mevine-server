@@ -21,10 +21,12 @@ export class TransactionService {
     type?: TransactionTypeEnum;
     search?: string;
     service?: ServiceTypeEnum;
+    status?: TransactionStatusEnum;
     id?: mongoose.Types.ObjectId;
     limit: number;
     from?: string; // Optional: start date string (e.g., '2023-01-01')
     to?: string; // Optional: end date string (e.g., '2023-12-31')
+    populateUser?: boolean;
   }): Promise<{
     currentPage: number;
     totalPages: number;
@@ -76,7 +78,6 @@ export class TransactionService {
           if (isNaN(toDate.getTime())) {
             throw new BadRequestException('Invalid "to" date format.');
           }
-
           toDate.setHours(23, 59, 59, 999);
           query.createdAt.$lte = toDate;
         }
@@ -84,6 +85,10 @@ export class TransactionService {
 
       if (body.service) {
         query.service = body.service;
+      }
+
+      if (body.status) {
+        query.status = body.status;
       }
 
       if (body.type) {
@@ -94,12 +99,22 @@ export class TransactionService {
         query.user = body.id;
       }
 
+      // Build the transaction query with conditional population
+      let transactionQuery = this.databaseService.transactions
+        .find(query)
+        .skip(skip)
+        .limit(body.limit);
+
+      // Conditionally populate user based on populateUser flag
+      if (body.populateUser === true) {
+        transactionQuery = transactionQuery.populate(
+          'user',
+          'firstName lastName email',
+        );
+      }
+
       const [transactions, countResult, sumResult] = await Promise.all([
-        this.databaseService.transactions
-          .find(query)
-          .skip(skip)
-          .limit(body.limit)
-          .exec(),
+        transactionQuery.exec(),
         this.databaseService.transactions.countDocuments(query),
         this.databaseService.transactions
           .aggregate([
@@ -130,11 +145,17 @@ export class TransactionService {
 
   async fetchATransaction(body: {
     id: string;
+    populateUser?: boolean; // <-- New optional property
   }): Promise<{ transaction: Transaction }> {
     try {
-      const transaction = await this.databaseService.transactions.findById(
-        body.id,
-      );
+      let query = this.databaseService.transactions.findById(body.id);
+
+      // Conditionally apply populate based on the populateUser flag
+      if (body.populateUser) {
+        query = query.populate('user', 'firstName lastName email');
+      }
+
+      const transaction = await query.exec(); // Execute the query
 
       if (!transaction) {
         throw new NotFoundException('Transaction not found');

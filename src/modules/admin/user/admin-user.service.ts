@@ -30,6 +30,7 @@ export class AdminUserService {
     to?: string;
     search?: string;
     restricted?: boolean;
+    completeAccount?: boolean;
   }): Promise<{
     currentPage: number;
     totalPages: number;
@@ -47,6 +48,12 @@ export class AdminUserService {
           { email: searchRegex },
           { 'bankDetails.accountNumber': searchRegex },
         ];
+      }
+
+      if (body.completeAccount && body.completeAccount!.toString() === 'true') {
+        query['accountStatus.accountVerified'] = true;
+      } else {
+        query['accountStatus.accountVerified'] = false;
       }
 
       if (body.restricted) {

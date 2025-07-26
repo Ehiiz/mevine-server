@@ -1,5 +1,3 @@
-import { th } from '@faker-js/faker/.';
-import { T } from '@faker-js/faker/dist/airline-BUL6NtOJ';
 import {
   BadGatewayException,
   ConflictException,
@@ -7,11 +5,10 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { DatabaseService } from 'src/core/database/database.service';
 import { User, UserDocument } from 'src/core/database/schemas/user.schema';
-import { EmailQueueService } from 'src/core/integrations/emails/email-queue.service';
+import { EmailProducerService } from 'src/core/integrations/emails/email-producer.service';
 import {
   UserCompleteSetupEvent,
   UserConfirmEmailEvent,
@@ -37,7 +34,7 @@ export class UserAuthService {
     private readonly databaseService: DatabaseService,
     private readonly jwtService: JwtService,
     private readonly bcryptService: BcryptService,
-    private readonly emailQueueService: EmailQueueService,
+    private readonly emailProducerService: EmailProducerService,
     private readonly quidaxProducerService: QuidaxProducerService,
     private readonly vfdService: VFDService,
     private readonly logger: WinstonNestJSLogger,
@@ -99,7 +96,7 @@ export class UserAuthService {
           await existingUser.save(); // Save the updated existing user with new token
 
           const event = new UserRegisteredEvent(existingUser.email, newCode);
-          await this.emailQueueService.handleEmailEvent(event);
+          await this.emailProducerService.handleEmailEvent(event);
 
           // Return the updated existing user and the new plain-text code
           return { user: existingUser, code: newCode };
@@ -128,7 +125,7 @@ export class UserAuthService {
       });
 
       const event = new UserRegisteredEvent(body.email, code);
-      await this.emailQueueService.handleEmailEvent(event);
+      await this.emailProducerService.handleEmailEvent(event);
 
       return { user, code };
     } catch (error) {
@@ -263,7 +260,7 @@ export class UserAuthService {
         body.user.email,
         `${body.user.firstName} ${body.user.lastName}`,
       );
-      await this.emailQueueService.handleEmailEvent(event);
+      await this.emailProducerService.handleEmailEvent(event);
 
       return { token, user: body.user };
     } catch (error) {
@@ -308,7 +305,7 @@ export class UserAuthService {
 
       const event = new UserLoginAttemptEvent(body.email, loginCode);
 
-      await this.emailQueueService.handleEmailEvent(event);
+      await this.emailProducerService.handleEmailEvent(event);
 
       return { message: message };
     } catch (error) {
@@ -379,7 +376,7 @@ export class UserAuthService {
       await user.save();
 
       const event = new UserConfirmEmailEvent(body.email, code);
-      await this.emailQueueService.handleEmailEvent(event);
+      await this.emailProducerService.handleEmailEvent(event);
 
       return { message: 'Reset code sent to user email' };
     } catch (error) {

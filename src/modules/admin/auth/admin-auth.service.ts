@@ -8,7 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { DatabaseService } from 'src/core/database/database.service';
 import { Admin, AdminDocument } from 'src/core/database/schemas/admin.schema';
-import { EmailQueueService } from 'src/core/integrations/emails/email-queue.service';
+import { EmailProducerService } from 'src/core/integrations/emails/email-producer.service';
 import {
   AdminLoginAttemptEvent,
   UserCompleteSetupEvent,
@@ -25,7 +25,7 @@ export class AdminAuthService {
     private readonly databaseService: DatabaseService,
     private readonly jwtService: JwtService,
     private readonly bcryptService: BcryptService,
-    private readonly emailQueueService: EmailQueueService,
+    private readonly emailProducerService: EmailProducerService,
     private readonly configService: ConfigService,
   ) {}
 
@@ -63,7 +63,7 @@ export class AdminAuthService {
 
       const event = new UserRegisteredEvent(body.email, code);
 
-      await this.emailQueueService.handleEmailEvent(event);
+      await this.emailProducerService.handleEmailEvent(event);
 
       return { admin, code };
     } catch (error) {
@@ -138,7 +138,7 @@ export class AdminAuthService {
         `${body.admin.firstName} ${body.admin.lastName}`,
       );
 
-      await this.emailQueueService.handleEmailEvent(event);
+      await this.emailProducerService.handleEmailEvent(event);
 
       return { token, admin: body.admin.toJSON() as Admin };
     } catch (error) {
@@ -177,7 +177,7 @@ export class AdminAuthService {
 
         const event = new UserRegisteredEvent(body.email, code);
 
-        await this.emailQueueService.handleEmailEvent(event);
+        await this.emailProducerService.handleEmailEvent(event);
       }
 
       if (!admin.accountStatus.accountVerified) {
@@ -263,7 +263,7 @@ export class AdminAuthService {
       await admin.save();
 
       const event = new UserConfirmEmailEvent(body.email, code);
-      await this.emailQueueService.handleEmailEvent(event);
+      await this.emailProducerService.handleEmailEvent(event);
 
       return { message: 'Reset code sent to admin email' };
     } catch (error) {

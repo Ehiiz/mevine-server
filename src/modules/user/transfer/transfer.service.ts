@@ -620,7 +620,7 @@ export class UserTransferService {
     body: {
       reference: string;
       amount: number;
-      user: UserDocument; // UserDocument
+      user: UserDocument;
       entityId: string;
       entityType: TransactionEntityTypeEnum;
       entityCode: string;
@@ -628,9 +628,32 @@ export class UserTransferService {
       entityName: string;
       service: ServiceTypeEnum;
     },
-    session: mongoose.ClientSession, // Accept session
+    session: mongoose.ClientSession,
   ): Promise<TransactionDocument> {
     try {
+      // Build the two ends
+      const userBankDetails = {
+        entityId: body.user._id.toString(),
+        entityType: TransactionEntityTypeEnum.user,
+        entityNumber: body.user.bankDetails.accountNumber,
+        entityCode: body.user.bankDetails.bankCode,
+        entityName: body.user.bankDetails.bankName,
+      };
+
+      const targetDetails = {
+        entityId: body.entityId,
+        entityType: body.entityType,
+        entityNumber: body.entityNumber,
+        entityCode: body.entityCode,
+        entityName: body.entityName,
+      };
+
+      // Swap if service is giftcard
+      const [paidFrom, paidTo] =
+        body.service === ServiceTypeEnum.giftcard
+          ? [targetDetails, userBankDetails]
+          : [userBankDetails, targetDetails];
+
       const [receipt] = await this.databaseService.transactions.create(
         [
           {
@@ -638,32 +661,20 @@ export class UserTransferService {
             reference: body.reference,
             service: body.service,
             user: body.user._id,
-            // Default status to pending, will be updated to completed or failed later
             status: TransactionStatusEnum.pending,
             type:
               body.service === ServiceTypeEnum.transfer
                 ? TransactionTypeEnum.transfer
-                : TransactionTypeEnum.funding, // Example: Adjust type based on service
+                : TransactionTypeEnum.funding,
             meta: {
-              paidFrom: {
-                entityId: body.user._id.toString(),
-                entityType: TransactionEntityTypeEnum.user,
-                entityNumber: body.user.bankDetails.accountNumber,
-                entityCode: body.user.bankDetails.bankCode, // Assuming this is present
-                entityName: body.user.bankDetails.bankName, // Assuming this is present
-              },
-              paidTo: {
-                entityId: body.entityId,
-                entityType: body.entityType,
-                entityNumber: body.entityNumber,
-                entityCode: body.entityCode,
-                entityName: body.entityName,
-              },
+              paidFrom,
+              paidTo,
             },
           },
         ],
-        { session }, // Pass session here
+        { session },
       );
+
       return receipt;
     } catch (error) {
       throw error;

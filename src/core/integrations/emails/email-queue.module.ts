@@ -1,8 +1,8 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Global, Module } from '@nestjs/common';
 import { EmailService } from './email.service';
-import { EmailQueueProcessor } from './email-queue.processor';
-import { EmailQueueService } from './email-queue.service';
+import { EmailProducerService } from './email-producer.service';
+import { EmailConsumerService } from './email-consumer.service';
 
 @Global()
 @Module({
@@ -20,7 +20,7 @@ import { EmailQueueService } from './email-queue.service';
       },
     }),
   ],
-  providers: [EmailService, EmailQueueService, EmailQueueProcessor],
-  exports: [EmailQueueService, EmailService],
+  providers: [EmailService, EmailProducerService, EmailConsumerService],
+  exports: [EmailService, EmailProducerService],
 })
 export class EmailQueueModule {}

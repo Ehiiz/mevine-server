@@ -4,7 +4,7 @@ import { BaseEmailEvent } from './email.utils';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class EmailQueueService {
+export class EmailProducerService {
   constructor(@InjectQueue('emails') private readonly emailQueue: Queue) {}
 
   async handleEmailEvent(event: BaseEmailEvent) {

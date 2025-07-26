@@ -4,6 +4,7 @@ import { AdminAuthService } from './admin-auth.service';
 import { BcryptService } from 'src/core/security/bcrypt.service';
 
 @Module({
+  imports: [],
   controllers: [AdminAuthController],
   providers: [AdminAuthService, BcryptService],
 })

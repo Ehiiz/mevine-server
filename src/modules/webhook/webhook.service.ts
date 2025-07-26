@@ -2,7 +2,6 @@ import {
   CreateWithdrawalPayload,
   DepositCompletedData,
   DepositExternalCompletedData,
-  OrderFilledData,
   QuidaxWebhookEvent,
   SwapCompletedData,
   WalletGeneratedData,
@@ -19,7 +18,6 @@ import {
 import { QuidaxProducerService } from '../providers/crypto/quidax/processor/quidax-producer.service';
 import { FcmProducerService } from 'src/core/integrations/fcm/fcm-producer.service';
 import { UserTransactionInfoFcmEvent } from 'src/core/integrations/fcm/fcm.utils';
-import { parse } from 'path';
 import { TransactionStatusEnum } from 'src/core/interfaces/transaction.interface';
 
 @Injectable()

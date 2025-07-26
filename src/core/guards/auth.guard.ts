@@ -29,7 +29,6 @@ export class AuthGuard implements CanActivate {
       const token = req.headers.authorization as string;
 
       const extToken = this.extractToken(token);
-      console.log(`Extracted Token: ${extToken}`); // Log the extracted token for debugging
 
       if (!extToken) {
         throw new UnauthorizedException('Bearer token missing in request');

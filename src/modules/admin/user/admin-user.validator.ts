@@ -12,6 +12,29 @@ import { Type, Transform } from 'class-transformer';
 import { User } from 'src/core/database/schemas/user.schema'; // Import User schema for response typing
 import { ICryptoDetails } from 'src/core/interfaces/user.interface';
 
+export const TransformStringToBoolean = () =>
+  Transform(({ value }) => {
+    if (value === undefined || value === null) return value;
+
+    // Handle string values (from query params)
+    if (typeof value === 'string') {
+      const lowerValue = value.toLowerCase();
+      if (lowerValue === 'true' || lowerValue === '1') return true;
+      if (lowerValue === 'false' || lowerValue === '0') return false;
+    }
+
+    // Handle boolean values (already boolean)
+    if (typeof value === 'boolean') return value;
+
+    // Handle numeric values
+    if (typeof value === 'number') {
+      return value !== 0;
+    }
+
+    // Return original value for validation to handle
+    return value;
+  });
+
 export class FetchUsersQueryDto {
   @ApiProperty({
     description: 'Page number for pagination',
@@ -68,13 +91,25 @@ export class FetchUsersQueryDto {
 
   @ApiProperty({
     description:
+      'Filter by account status (true for completed users, false for non-banned)',
+    example: true,
+    type: 'boolean',
+    required: false,
+  })
+  @IsOptional()
+  @TransformStringToBoolean()
+  @IsBoolean({ message: 'Complete account must be a boolean value' })
+  completeAccount?: boolean;
+
+  @ApiProperty({
+    description:
       'Filter by restricted status (true for banned users, false for non-banned)',
     example: true,
     type: 'boolean',
     required: false,
   })
   @IsOptional()
-  @Type(() => Boolean) // Important for query params that are boolean strings
+  @TransformStringToBoolean()
   @IsBoolean({ message: 'Restricted must be a boolean value' })
   restricted?: boolean;
 }

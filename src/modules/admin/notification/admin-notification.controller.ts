@@ -94,6 +94,10 @@ export class AdminNotificationsController {
   ): Promise<{ message: string; data: { notification: Notification } }> {
     // FIX: Updated return type
     try {
+      console.log(
+        'This is initializing the notification creation process',
+        body,
+      );
       const initiator: AdminDocument = request.admin; // Assuming AuthGuard attaches admin user to request
       const notification =
         await this.adminNotificationsService.createNotification({

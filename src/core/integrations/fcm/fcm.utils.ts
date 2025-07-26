@@ -110,3 +110,19 @@ export class AdminApproveUserFcmEvent extends BaseFcmEvent {
     );
   }
 }
+
+// --- General Notification Event (NEW) ---
+export class GeneralNotificationFcmEvent extends BaseFcmEvent {
+  constructor(
+    fcmToken: string,
+    title: string,
+    description: string, // Changed from 'body' to 'description' for clarity with Notification schema
+    notificationId: string, // Reference to the created Notification document
+  ) {
+    super(fcmToken, title, description, {
+      eventType: 'GENERAL_NOTIFICATION', // A new event type for general notifications
+      notificationId: notificationId,
+      // You can add more data here if needed, e.g., a link to the notification in the app
+    });
+  }
+}

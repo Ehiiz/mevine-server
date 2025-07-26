@@ -461,6 +461,12 @@ class TransactionDetailsResponse implements Transaction {
     example: TransactionStatusEnum.completed,
   })
   status: TransactionStatusEnum;
+
+  @ApiProperty({
+    type: 'string',
+    example: 'TRX123456789',
+  })
+  reference: string;
   @ApiProperty({
     type: 'string',
     enum: ServiceTypeEnum,

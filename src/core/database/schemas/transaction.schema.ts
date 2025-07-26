@@ -50,6 +50,11 @@ export class Transaction {
   service: ServiceTypeEnum;
 
   @Prop({
+    type: String,
+  })
+  reference: string;
+
+  @Prop({
     type: {
       paidFrom: {
         entityId: String,

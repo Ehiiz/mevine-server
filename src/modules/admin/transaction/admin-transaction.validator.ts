@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsInt,
   IsOptional,
@@ -130,16 +130,41 @@ export class FetchAnAdminTransactionParamDto {
   id: string;
 }
 
+export enum AdminTransactionDecisionEnum {
+  approve = 'approve',
+  reject = 'reject',
+}
+
+export class UpdateAdminGiftCardTransactionStatusDto {
+  @ApiProperty({
+    description: 'New status for the transaction',
+    enum: AdminTransactionDecisionEnum,
+    example: AdminTransactionDecisionEnum.approve,
+  })
+  @IsEnum(AdminTransactionDecisionEnum, {
+    message: `Status must be one of: ${Object.values(AdminTransactionDecisionEnum).join(', ')}`,
+  })
+  status: AdminTransactionDecisionEnum;
+
+  @ApiPropertyOptional({
+    description: 'Optional reason for rejection or cancellation',
+    example: 'Insufficient documentation provided',
+  })
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}
+
 export class UpdateAdminTransactionStatusDto {
   @ApiProperty({
     description: 'New status for the transaction',
     enum: TransactionStatusEnum,
     example: TransactionStatusEnum.completed,
   })
-  @IsEnum(TransactionStatusEnum, {
-    message: `Status must be one of: ${Object.values(TransactionStatusEnum).join(', ')}`,
+  @IsEnum(AdminTransactionDecisionEnum, {
+    message: `Status must be one of: ${Object.values(AdminTransactionDecisionEnum).join(', ')}`,
   })
-  status: TransactionStatusEnum.processing | TransactionStatusEnum.cancelled;
+  status: TransactionStatusEnum;
 }
 
 export class SimulateCreditDto {
@@ -258,6 +283,13 @@ export class TransactionResponseSchema implements Transaction {
   service: ServiceTypeEnum;
 
   @ApiProperty({
+    type: 'string',
+    example: 'TX123456789',
+    description: 'Unique reference for the transaction',
+  })
+  reference: string;
+
+  @ApiProperty({
     type: 'object',
     properties: {
       paidFrom: {
@@ -341,6 +373,12 @@ export class GiftCardResponseDto {
     description: 'Card code for redemption',
   })
   cardCode: string;
+
+  @ApiProperty({
+    example: 'https://example.com/card-image.jpg',
+    description: 'Card image for redemption',
+  })
+  cardImage?: string;
 
   @ApiProperty({
     enum: TransactionStatusEnum,

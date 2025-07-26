@@ -40,6 +40,7 @@ import {
   GiftCardResponseDto,
   SimulateCreditDto,
   TransactionResponseSchema,
+  UpdateAdminGiftCardTransactionStatusDto,
   UpdateAdminTransactionStatusDto,
 } from './admin-transaction.validator';
 import { ServiceDecorator } from 'src/core/decorators/auth.decorator';
@@ -353,7 +354,7 @@ export class AdminTransactionController {
     }
   }
 
-  @Patch('giftcard/:id/status')
+  @Patch('giftcards/:id/status')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Update the status of a specific transaction by ID (Admin access)',
@@ -391,7 +392,7 @@ export class AdminTransactionController {
   })
   async updateAGiftCardTransactionStatus(
     @Param() params: FetchAnAdminTransactionParamDto, // Re-use ID param DTO
-    @Body() body: UpdateAdminTransactionStatusDto,
+    @Body() body: UpdateAdminGiftCardTransactionStatusDto,
   ): Promise<{ message: string; data: { transaction: Transaction } }> {
     try {
       const { transaction } =

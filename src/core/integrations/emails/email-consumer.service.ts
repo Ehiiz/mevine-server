@@ -4,7 +4,7 @@ import { Job } from 'bullmq';
 import { BaseEmailEvent } from './email.utils';
 
 @Processor('emails')
-export class EmailQueueProcessor extends WorkerHost {
+export class EmailConsumerService extends WorkerHost {
   constructor(private readonly emailService: EmailService) {
     super();
   }

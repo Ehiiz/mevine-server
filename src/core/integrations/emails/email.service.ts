@@ -1,10 +1,10 @@
 import * as handlebars from 'handlebars';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as nodemailer from 'nodemailer';
 import { ConfigService } from '@nestjs/config';
 import { BaseEmailEvent } from './email.utils';
 import { Injectable, Logger } from '@nestjs/common';
+import { SendMailClient } from 'zeptomail'; // Assuming this is the correct import
 
 export interface MailAttachment {
   filename: string;
@@ -16,21 +16,20 @@ export interface MailAttachment {
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  public transporter: nodemailer.Transporter;
+  private zohoTransport: any;
+
   constructor(public readonly configService: ConfigService) {
     this.logger.debug(
       'Initializing EmailService...',
       this.configService.get<string>('NODEMAILER_HOST'),
     );
-    this.transporter = nodemailer.createTransport({
-      host: this.configService.get<string>('NODEMAILER_HOST')!,
-      port: parseInt(this.configService.get<string>('NODEMAILER_PORT')!, 10), // Port should be a number
-      secure: this.configService.get<boolean>('NODEMAILER_SECURE') ?? true, // Assuming secure is true by default or configurable
-      auth: {
-        user: this.configService.get<string>('NODEMAILER_USER')!,
-        pass: this.configService.get<string>('NODEMAILER_PASS')!,
-      },
-      from: `Mevine <${this.configService.get<string>('NODEMAILER_USER')!}>`,
+    this.initiateZohoTransport();
+  }
+
+  private initiateZohoTransport() {
+    this.zohoTransport = new SendMailClient({
+      url: `${this.configService.get<string>('ZOHO_MAIL_URL')}`,
+      token: `${this.configService.get<string>('ZOHO_MAIL_TOKEN')}`,
     });
   }
 
@@ -53,7 +52,8 @@ export class EmailService {
   }
 
   public async sendEmail(event: BaseEmailEvent) {
-    const { email, emailTemplate, emailSubject, ...emailData } = event;
+    const { email, emailTemplate, attachments, emailSubject, ...emailData } =
+      event;
 
     const mailHtml = this.generateEmailHelpers(emailTemplate, {
       ...emailData,
@@ -67,28 +67,84 @@ export class EmailService {
     });
 
     await this.sendMail({
-      to: `${email}`,
+      to: email,
       subject: emailSubject,
-      html: finalHtml,
+      html: mailHtml,
+      ...(attachments && { attachments: attachments }),
     });
   }
 
-  async sendMail(mailOptions: {
+  public async sendMail(mailOptions: {
     to: string;
     subject: string;
     html: string;
     attachments?: MailAttachment[];
   }) {
+    // Transform attachments to match Zoho's expected format
+    const transformedAttachments = mailOptions.attachments?.map(
+      (attachment) => {
+        // Ensure content is properly encoded as base64 if it's not already
+        let base64Content;
+        if (Buffer.isBuffer(attachment.content)) {
+          base64Content = attachment.content.toString('base64');
+        } else if (typeof attachment.content === 'string') {
+          // If it's already a string, check if it's base64
+          base64Content = attachment.content.startsWith('data:')
+            ? attachment.content.split(',')[1]
+            : attachment.content;
+        }
+
+        return {
+          name: attachment.filename,
+          content: base64Content,
+          mime_type: attachment.contentType,
+          disposition: 'attachment', // Explicitly set disposition
+        };
+      },
+    );
+
+    const sendOptions = {
+      subject: mailOptions.subject,
+      from: {
+        address: process.env.ZOHO_FROM_EMAIL || 'noreply@odolearn.com',
+        name: process.env.APP_NAME || 'Application',
+      },
+      to: [
+        {
+          email_address: {
+            address: mailOptions.to,
+            name: 'User',
+          },
+        },
+      ],
+      htmlbody: mailOptions.html,
+      track_clicks: true,
+      track_opens: true,
+      ...(transformedAttachments && { attachments: transformedAttachments }),
+    };
+
     try {
-      const sendOptions = {
-        ...mailOptions,
-        from: `Mevine <${this.configService.get<string>('NODEMAILER_USER')!}>`,
-      };
-      await this.transporter.sendMail(sendOptions);
-      this.logger.log(`Email sent successfully to: ${mailOptions.to}`); // Add success log
+      this.logger.log(
+        'Sending mail with options:',
+        JSON.stringify({
+          ...sendOptions,
+          attachments: sendOptions.attachments?.map((a) => ({
+            filename: a.name,
+            mime_type: a.mime_type,
+            disposition: a.disposition,
+          })),
+        }),
+      );
+      await this.zohoTransport.sendMail(sendOptions);
+      this.logger.log('Email sent successfully');
     } catch (error) {
-      this.logger.error(`Failed to send email to ${mailOptions.to}:`, error);
-      throw error; // <-- THIS IS THE KEY CHANGE! Re-throw the error
+      this.logger.log('Error sending mail:', error);
+      this.logger.log(
+        'Error details:',
+        error.details ? JSON.stringify(error.details, null, 2) : undefined,
+      );
+      this.logger.log('Full error object:', JSON.stringify(error, null, 2));
+      throw error;
     }
   }
 }

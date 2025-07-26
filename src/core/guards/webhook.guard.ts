@@ -7,7 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 import * as crypto from 'crypto'; // Import the crypto module
-import { EmailQueueService } from '../integrations/emails/email-queue.service';
+import { EmailProducerService } from '../integrations/emails/email-producer.service';
 import { AdminPushNotificationEvent } from '../integrations/emails/email.utils';
 
 @Injectable()
@@ -16,7 +16,7 @@ export class QuidaxGuard implements CanActivate {
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly emailQueueService: EmailQueueService,
+    private readonly emailProducerService: EmailProducerService,
   ) {
     // It's better to get the key in the constructor if it's static
     const key = this.configService.get<string>('QUIDAX_WEBHOOK_KEY');
@@ -33,7 +33,7 @@ export class QuidaxGuard implements CanActivate {
         body: 'Recieved webhook',
         sentByAdminId: 'Quidax',
       });
-      await this.emailQueueService.handleEmailEvent(event);
+      await this.emailProducerService.handleEmailEvent(event);
       const req: Request = context.switchToHttp().getRequest();
 
       const quidaxSignatureHeader = req.headers['quidax-signature'];
@@ -74,7 +74,7 @@ export class QuidaxGuard implements CanActivate {
           body: requestBody,
           sentByAdminId: 'Quidax',
         });
-        await this.emailQueueService.handleEmailEvent(event);
+        await this.emailProducerService.handleEmailEvent(event);
         return true; // Signature matches, allow the request
       } else {
         throw new UnauthorizedException('Invalid Quidax signature.');

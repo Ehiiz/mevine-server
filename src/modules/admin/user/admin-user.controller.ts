@@ -32,6 +32,7 @@ import {
   UserResponseSchema,
 } from './admin-user.validator';
 import { ServiceDecorator } from 'src/core/decorators/auth.decorator';
+import { Transform } from 'class-transformer';
 
 @ApiTags('Admin User Management')
 @Controller('')
@@ -66,6 +67,12 @@ export class AdminUserController {
   @ApiQuery({ name: 'search', required: false, type: String, example: 'john' })
   @ApiQuery({
     name: 'restricted',
+    required: false,
+    type: Boolean,
+    example: true,
+  })
+  @ApiQuery({
+    name: 'completeAccount',
     required: false,
     type: Boolean,
     example: true,

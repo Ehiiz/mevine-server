@@ -1,4 +1,5 @@
 import { ConfigService } from '@nestjs/config';
+import { MailAttachment } from './email.service';
 
 export enum EmailNotificationEvents {
   // --- User Events ---
@@ -40,6 +41,7 @@ export abstract class BaseEmailEvent {
     public readonly email: string,
     public readonly emailTemplate: string,
     public readonly emailSubject: string,
+    public readonly attachments?: MailAttachment[],
   ) {
     this.timestamp = new Date();
   }

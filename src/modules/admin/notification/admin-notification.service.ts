@@ -1,3 +1,4 @@
+// src/admin/admin-notifications/admin-notifications.service.ts (Augmented)
 import {
   Injectable,
   Logger,
@@ -14,12 +15,19 @@ import {
 } from 'src/core/database/schemas/notification.schema'; // Adjust path
 import { UserDocument } from 'src/core/database/schemas/user.schema'; // Adjust path (for targeting users)
 import * as mongoose from 'mongoose';
+import { FcmProducerService } from 'src/core/integrations/fcm/fcm-producer.service';
+import { GeneralNotificationFcmEvent } from 'src/core/integrations/fcm/fcm.utils'; // Import the new event class
+import { WinstonNestJSLogger } from 'src/core/logger/winston/winston-nestjs-logger.service';
 
 @Injectable()
 export class AdminNotificationsService {
-  private readonly logger = new Logger(AdminNotificationsService.name);
-
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly fcmProducerService: FcmProducerService,
+    private readonly logger: WinstonNestJSLogger,
+  ) {
+    this.logger.setContext(AdminNotificationsService.name);
+  }
 
   async createNotification(body: {
     initiator: AdminDocument; // Admin who creates the notification
@@ -30,6 +38,7 @@ export class AdminNotificationsService {
     targetUsers?: string[]; // Array of user IDs (strings)
   }): Promise<NotificationDocument> {
     try {
+      console.log('Creating admin notification with body:', body);
       const {
         initiator,
         icon,
@@ -38,18 +47,20 @@ export class AdminNotificationsService {
         isBroadcast = true,
         targetUsers,
       } = body;
+      console.log(body);
 
       // Validate targetUsers if not broadcast
       let actualTargetUsers: mongoose.Types.ObjectId[] = [];
       if (!isBroadcast && targetUsers && targetUsers.length > 0) {
-        // Optional: Verify if targetUsers actually exist in your User collection
+        // Fetch users to verify existence and get their FCM tokens
         const existingUsers = await this.databaseService.users
           .find({ _id: { $in: targetUsers } })
-          .select('_id')
+          .select('_id fcmToken') // Select fcmToken as well
           .exec();
+
         if (existingUsers.length !== targetUsers.length) {
           throw new BadRequestException(
-            'One or more target user IDs are invalid.',
+            'One or more target user IDs are invalid or not found.',
           );
         }
         actualTargetUsers = existingUsers.map((u) => u._id);
@@ -66,20 +77,23 @@ export class AdminNotificationsService {
         });
 
       // After creating the main notification, create user-specific instances in the background
-      // This part can be offloaded to a queue (like BullMQ) for very large user bases
       this.logger.debug(
         `Creating user notifications for content: ${newNotification._id}`,
       );
+
       let usersToNotify: UserDocument[] = [];
       if (newNotification.isBroadcast) {
         usersToNotify = await this.databaseService.users
-          .find()
-          .select('_id')
+          .find({ fcmToken: { $ne: null, $exists: true } }) // Only users with FCM tokens
+          .select('_id fcmToken') // Select fcmToken
           .exec();
       } else if (newNotification.targetUsers.length > 0) {
         usersToNotify = await this.databaseService.users
-          .find({ _id: { $in: newNotification.targetUsers } })
-          .select('_id')
+          .find({
+            _id: { $in: newNotification.targetUsers },
+            fcmToken: { $ne: null, $exists: true },
+          }) // Filter by targetUsers and existing FCM tokens
+          .select('_id fcmToken') // Select fcmToken
           .exec();
       }
 
@@ -95,6 +109,26 @@ export class AdminNotificationsService {
       this.logger.debug(
         `Created ${userNotificationPromises.length} user-specific notification instances.`,
       );
+
+      // --- Send FCM Notifications via Queue (NEW) ---
+      const fcmJobPromises = usersToNotify
+        .filter((user) => user.fcmToken) // Ensure user has an FCM token
+        .map(async (user) => {
+          const fcmEvent = new GeneralNotificationFcmEvent(
+            user.fcmToken,
+            newNotification.title,
+            newNotification.description,
+            newNotification._id.toString(), // Pass the notification ID
+          );
+          // Add the job to the BullMQ queue
+          await this.fcmProducerService.handleFcmEvent(fcmEvent);
+          this.logger.debug(
+            `Queued FCM for user ${user._id} with token ${user.fcmToken}`,
+          );
+        });
+      await Promise.all(fcmJobPromises);
+      this.logger.log(`Queued ${fcmJobPromises.length} FCM messages.`);
+      // --- End FCM Notification Sending ---
 
       this.logger.log(
         `Admin notification created: ${newNotification._id} by ${initiator.email}`,
@@ -134,12 +168,12 @@ export class AdminNotificationsService {
         this.databaseService.notifications
           .find(query)
           .populate('initiator', 'firstName lastName email') // Populate initiator details
-          .populate('targetUsers', 'firstName lastName email')
+          .populate('targetUsers', 'firstName lastName email') // Populate targetUsers details
           .sort({ createdAt: -1 })
           .skip(skip)
           .limit(limit)
           .exec(),
-        this.databaseService.notifications.countDocuments(),
+        this.databaseService.notifications.countDocuments(query), // Count documents based on the query
       ]);
       return {
         currentPage: page,
@@ -248,10 +282,6 @@ export class AdminNotificationsService {
       );
 
       // Re-evaluate and update user-specific notifications if broadcast/targetUsers changed
-      // This is a complex area and requires careful consideration of what 'update' means for existing user notifications.
-      // For a simple approach, you might delete existing UserNotifications for this Notification
-      // and recreate them based on the new `isBroadcast` and `targetUsers` settings.
-      // This part is crucial for consistency between Notification content and UserNotification instances.
       if (shouldRegenerateUserNotifications) {
         this.logger.debug(
           `Detected changes in broadcast/targetUsers for notification ${notificationId}. Regenerating user notifications.`,
@@ -265,13 +295,16 @@ export class AdminNotificationsService {
         let usersToNotify: UserDocument[] = [];
         if (notification.isBroadcast) {
           usersToNotify = await this.databaseService.users
-            .find()
-            .select('_id')
+            .find({ fcmToken: { $ne: null, $exists: true } }) // Only users with FCM tokens
+            .select('_id fcmToken')
             .exec();
         } else if (notification.targetUsers.length > 0) {
           usersToNotify = await this.databaseService.users
-            .find({ _id: { $in: notification.targetUsers } })
-            .select('_id')
+            .find({
+              _id: { $in: notification.targetUsers },
+              fcmToken: { $ne: null, $exists: true },
+            })
+            .select('_id fcmToken')
             .exec();
         }
         const userNotificationPromises = usersToNotify.map((user) =>
@@ -285,6 +318,26 @@ export class AdminNotificationsService {
         await Promise.all(userNotificationPromises);
         this.logger.debug(
           `Recreated ${userNotificationPromises.length} user-specific notification instances for ${notificationId}.`,
+        );
+
+        // Re-send FCM notifications for updated targets
+        const fcmJobPromises = usersToNotify
+          .filter((user) => user.fcmToken)
+          .map(async (user) => {
+            const fcmEvent = new GeneralNotificationFcmEvent(
+              user.fcmToken,
+              notification.title,
+              notification.description,
+              notification._id.toString(),
+            );
+            await this.fcmProducerService.handleFcmEvent(fcmEvent);
+            this.logger.debug(
+              `Re-queued FCM for user ${user._id} after update.`,
+            );
+          });
+        await Promise.all(fcmJobPromises);
+        this.logger.log(
+          `Re-queued ${fcmJobPromises.length} FCM messages after update.`,
         );
       }
 

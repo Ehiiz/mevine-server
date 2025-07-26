@@ -138,6 +138,12 @@ class TransactionResponseSchema implements Transaction {
 
   @ApiProperty({
     type: 'string',
+    example: 'TX123456789',
+  })
+  reference: string;
+
+  @ApiProperty({
+    type: 'string',
     enum: TransactionStatusEnum,
     example: TransactionStatusEnum.completed,
   })
