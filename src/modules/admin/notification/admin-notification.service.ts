@@ -38,7 +38,6 @@ export class AdminNotificationsService {
     targetUsers?: string[]; // Array of user IDs (strings)
   }): Promise<NotificationDocument> {
     try {
-      console.log('Creating admin notification with body:', body);
       const {
         initiator,
         icon,
@@ -47,7 +46,6 @@ export class AdminNotificationsService {
         isBroadcast = true,
         targetUsers,
       } = body;
-      console.log(body);
 
       // Validate targetUsers if not broadcast
       let actualTargetUsers: mongoose.Types.ObjectId[] = [];
