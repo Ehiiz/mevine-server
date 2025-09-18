@@ -66,6 +66,8 @@ export class EmailService {
       year: new Date().getFullYear(), // Add year to payload for footer
     });
 
+    console.log(mailHtml);
+
     await this.sendMail({
       to: email,
       subject: emailSubject,
