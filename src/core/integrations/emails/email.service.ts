@@ -108,7 +108,7 @@ export class EmailService {
     const sendOptions = {
       subject: mailOptions.subject,
       from: {
-        address: process.env.ZOHO_FROM_EMAIL || 'noreply@odolearn.com',
+        address: process.env.ZOHO_FROM_EMAIL || 'noreply@ticketzap.com.ng',
         name: process.env.APP_NAME || 'Application',
       },
       to: [
